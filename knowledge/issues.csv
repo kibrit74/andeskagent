@@ -1,0 +1,4 @@
+id,problem,error_code,symptoms,solution_steps,success_rate,bat_script
+1,"Outlook acilmiyor","0x80070057","uygulama baslamiyor hata mesaji","Outlook onarimi","80%","outlook_repair"
+2,"Mail gonderilmiyor","","giden kutusu dolup tasiyor","DNS flush ve Outlook yeniden baslatma","75%","dns_flush"
+3,"PC yavas","","temp dosyalari birikti","Temp temizligi","95%","clear_temp"

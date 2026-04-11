@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Agentic CLI (Claude Code Style)</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="terminal-container">
+        <section class="access-panel" id="access-panel">
+            <div class="access-copy">
+                <div class="access-eyebrow">Mobil Erişim</div>
+                <h1 class="access-title">Bu sayfayı telefonda hızlı açın</h1>
+                <p class="access-description">Aynı ağa bağlı cihazdan aşağıdaki bağlantıyı açın veya QR kodu okutun.</p>
+                <a class="access-link" id="access-link" href="#" target="_blank" rel="noreferrer">Bağlantı hazırlanıyor...</a>
+                <div class="access-hint" id="access-hint"></div>
+            </div>
+            <div class="qr-card">
+                <img id="qr-image" class="qr-image" alt="Bu sayfanın QR kodu">
+            </div>
+        </section>
+
+        <!-- Mac Style Header -->
+        <div class="terminal-header">
+            <div class="window-controls">
+                <span class="control close"></span>
+                <span class="control minimize"></span>
+                <span class="control maximize"></span>
+            </div>
+            <div class="window-title">⚙️ Agentic Shell (Claude Code)</div>
+            <div class="window-spacer"></div>
+        </div>
+
+        <!-- Terminal Output Area -->
+        <div class="terminal-body" id="terminal-body">
+            <div class="message system">
+                <span class="status-icon">🚀</span>
+                <span class="text">Agentic CLI v1.0 başlatıldı.</span>
+            </div>
+            <div class="message system">
+                <span class="text" style="color: #6e7681;">İpuçları: Uygulama kurabilir, dosya oluşturabilir veya analiz isteyebilirsiniz.</span>
+            </div>
+            <!-- Dynamic content injected here -->
+        </div>
+
+        <!-- Sticky Input Area -->
+        <div class="terminal-input-wrapper">
+            <span class="prompt-icon">❯</span>
+            <input type="text" id="cli-input" class="cli-input" placeholder="Yapay zekaya komut verin..." autocomplete="off">
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

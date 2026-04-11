@@ -1,0 +1,729 @@
+﻿{
+    "scripts":  [
+                    {
+                        "name":  "outlook_repair",
+                        "path":  "scripts/windows/outlook_repair.bat",
+                        "description":  "Outlook icin temel onarim akisi",
+                        "aliases":  [
+                                        "outlook onar",
+                                        "outlook duzelt",
+                                        "outlook tamir et"
+                                    ]
+                    },
+                    {
+                        "name":  "dns_flush",
+                        "path":  "scripts/windows/dns_flush.bat",
+                        "description":  "DNS cache temizleme",
+                        "aliases":  [
+                                        "dns temizle",
+                                        "dns flush",
+                                        "dns onbellegini temizle"
+                                    ]
+                    },
+                    {
+                        "name":  "clear_temp",
+                        "path":  "scripts/windows/clear_temp.bat",
+                        "description":  "Temp klasorlerini temizleme",
+                        "aliases":  [
+                                        "temp temizle",
+                                        "gecici dosyalari temizle",
+                                        "temp dosyalarini temizle"
+                                    ]
+                    },
+                    {
+                        "name":  "office_repair",
+                        "path":  "scripts/windows/office_repair.bat",
+                        "description":  "Office onarim akisi",
+                        "aliases":  [
+                                        "office onar",
+                                        "office duzelt",
+                                        "office tamir et"
+                                    ]
+                    },
+                    {
+                        "name":  "restart_service",
+                        "path":  "scripts/windows/restart_service.bat",
+                        "description":  "Servis yeniden baslatma",
+                        "aliases":  [
+                                        "servisi yeniden baslat",
+                                        "service restart",
+                                        "servis restart"
+                                    ]
+                    },
+                    {
+                        "name":  "open_chrome",
+                        "path":  "scripts/windows/library/open_chrome.bat",
+                        "description":  "Chrome ac",
+                        "aliases":  [
+                                        "chrome ac",
+                                        "google chrome ac",
+                                        "chrome baslat"
+                                    ]
+                    },
+                    {
+                        "name":  "open_edge",
+                        "path":  "scripts/windows/library/open_edge.bat",
+                        "description":  "Edge ac",
+                        "aliases":  [
+                                        "edge ac",
+                                        "microsoft edge ac",
+                                        "edge baslat"
+                                    ]
+                    },
+                    {
+                        "name":  "open_firefox",
+                        "path":  "scripts/windows/library/open_firefox.bat",
+                        "description":  "Firefox ac",
+                        "aliases":  [
+                                        "firefox ac",
+                                        "mozilla firefox ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_outlook",
+                        "path":  "scripts/windows/library/open_outlook.bat",
+                        "description":  "Outlook ac",
+                        "aliases":  [
+                                        "outlook ac",
+                                        "outlok ac",
+                                        "outlook uygulamasini ac",
+                                        "outlok uygulamasini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_excel",
+                        "path":  "scripts/windows/library/open_excel.bat",
+                        "description":  "Excel ac",
+                        "aliases":  [
+                                        "excel ac",
+                                        "excel uygulamasini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_word",
+                        "path":  "scripts/windows/library/open_word.bat",
+                        "description":  "Word ac",
+                        "aliases":  [
+                                        "word ac",
+                                        "word uygulamasini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_powerpoint",
+                        "path":  "scripts/windows/library/open_powerpoint.bat",
+                        "description":  "PowerPoint ac",
+                        "aliases":  [
+                                        "powerpoint ac",
+                                        "slayt uygulamasini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_notepad",
+                        "path":  "scripts/windows/library/open_notepad.bat",
+                        "description":  "Notepad ac",
+                        "aliases":  [
+                                        "notepad ac",
+                                        "not defteri ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_calc",
+                        "path":  "scripts/windows/library/open_calc.bat",
+                        "description":  "Hesap makinesi ac",
+                        "aliases":  [
+                                        "hesap makinesi ac",
+                                        "calculator ac",
+                                        "calc ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_paint",
+                        "path":  "scripts/windows/library/open_paint.bat",
+                        "description":  "Paint ac",
+                        "aliases":  [
+                                        "paint ac",
+                                        "boya ac",
+                                        "mspaint ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_explorer",
+                        "path":  "scripts/windows/library/open_explorer.bat",
+                        "description":  "Dosya gezgini ac",
+                        "aliases":  [
+                                        "dosya gezgini ac",
+                                        "explorer ac",
+                                        "file explorer ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_snipping_tool",
+                        "path":  "scripts/windows/library/open_snipping_tool.bat",
+                        "description":  "Ekran alintisi aracini ac",
+                        "aliases":  [
+                                        "snipping tool ac",
+                                        "ekran alintisi aracini ac",
+                                        "kirpma aracini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "close_chrome",
+                        "path":  "scripts/windows/library/close_chrome.bat",
+                        "description":  "Chrome kapat",
+                        "aliases":  [
+                                        "chrome kapat",
+                                        "chrome kapansin"
+                                    ]
+                    },
+                    {
+                        "name":  "close_edge",
+                        "path":  "scripts/windows/library/close_edge.bat",
+                        "description":  "Edge kapat",
+                        "aliases":  [
+                                        "edge kapat",
+                                        "edge kapansin"
+                                    ]
+                    },
+                    {
+                        "name":  "close_firefox",
+                        "path":  "scripts/windows/library/close_firefox.bat",
+                        "description":  "Firefox kapat",
+                        "aliases":  [
+                                        "firefox kapat"
+                                    ]
+                    },
+                    {
+                        "name":  "close_outlook",
+                        "path":  "scripts/windows/library/close_outlook.bat",
+                        "description":  "Outlook kapat",
+                        "aliases":  [
+                                        "outlook kapat",
+                                        "outlok kapat"
+                                    ]
+                    },
+                    {
+                        "name":  "close_excel",
+                        "path":  "scripts/windows/library/close_excel.bat",
+                        "description":  "Excel kapat",
+                        "aliases":  [
+                                        "excel kapat"
+                                    ]
+                    },
+                    {
+                        "name":  "close_word",
+                        "path":  "scripts/windows/library/close_word.bat",
+                        "description":  "Word kapat",
+                        "aliases":  [
+                                        "word kapat"
+                                    ]
+                    },
+                    {
+                        "name":  "close_powerpoint",
+                        "path":  "scripts/windows/library/close_powerpoint.bat",
+                        "description":  "PowerPoint kapat",
+                        "aliases":  [
+                                        "powerpoint kapat"
+                                    ]
+                    },
+                    {
+                        "name":  "close_notepad",
+                        "path":  "scripts/windows/library/close_notepad.bat",
+                        "description":  "Notepad kapat",
+                        "aliases":  [
+                                        "notepad kapat",
+                                        "not defterini kapat"
+                                    ]
+                    },
+                    {
+                        "name":  "close_teams",
+                        "path":  "scripts/windows/library/close_teams.bat",
+                        "description":  "Teams kapat",
+                        "aliases":  [
+                                        "teams kapat",
+                                        "microsoft teams kapat"
+                                    ]
+                    },
+                    {
+                        "name":  "close_onedrive",
+                        "path":  "scripts/windows/library/close_onedrive.bat",
+                        "description":  "OneDrive kapat",
+                        "aliases":  [
+                                        "onedrive kapat",
+                                        "one drive kapat"
+                                    ]
+                    },
+                    {
+                        "name":  "open_desktop",
+                        "path":  "scripts/windows/library/open_desktop.bat",
+                        "description":  "Masaustunu ac",
+                        "aliases":  [
+                                        "masaustunu ac",
+                                        "desktop ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_documents",
+                        "path":  "scripts/windows/library/open_documents.bat",
+                        "description":  "Belgeleri ac",
+                        "aliases":  [
+                                        "belgeleri ac",
+                                        "documents ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_downloads",
+                        "path":  "scripts/windows/library/open_downloads.bat",
+                        "description":  "Indirilenleri ac",
+                        "aliases":  [
+                                        "indirilenleri ac",
+                                        "downloads ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_pictures",
+                        "path":  "scripts/windows/library/open_pictures.bat",
+                        "description":  "Resimler klasorunu ac",
+                        "aliases":  [
+                                        "resimleri ac",
+                                        "pictures ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_videos",
+                        "path":  "scripts/windows/library/open_videos.bat",
+                        "description":  "Videolar klasorunu ac",
+                        "aliases":  [
+                                        "videolari ac",
+                                        "videos ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_music",
+                        "path":  "scripts/windows/library/open_music.bat",
+                        "description":  "Muzik klasorunu ac",
+                        "aliases":  [
+                                        "muzikleri ac",
+                                        "music klasorunu ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_temp_folder",
+                        "path":  "scripts/windows/library/open_temp_folder.bat",
+                        "description":  "Temp klasorunu ac",
+                        "aliases":  [
+                                        "temp klasorunu ac",
+                                        "gecici klasoru ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_startup_folder",
+                        "path":  "scripts/windows/library/open_startup_folder.bat",
+                        "description":  "Startup klasorunu ac",
+                        "aliases":  [
+                                        "startup klasorunu ac",
+                                        "baslangic klasorunu ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_program_files",
+                        "path":  "scripts/windows/library/open_program_files.bat",
+                        "description":  "Program Files klasorunu ac",
+                        "aliases":  [
+                                        "program files klasorunu ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_public_desktop",
+                        "path":  "scripts/windows/library/open_public_desktop.bat",
+                        "description":  "Ortak masaustunu ac",
+                        "aliases":  [
+                                        "ortak masaustunu ac",
+                                        "public desktop ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_task_manager",
+                        "path":  "scripts/windows/library/open_task_manager.bat",
+                        "description":  "Gorev yoneticisini ac",
+                        "aliases":  [
+                                        "gorev yoneticisini ac",
+                                        "task manager ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_control_panel",
+                        "path":  "scripts/windows/library/open_control_panel.bat",
+                        "description":  "Denetim masasini ac",
+                        "aliases":  [
+                                        "denetim masasini ac",
+                                        "control panel ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_programs_features",
+                        "path":  "scripts/windows/library/open_programs_features.bat",
+                        "description":  "Programlar ve ozellikleri ac",
+                        "aliases":  [
+                                        "program ekle kaldiri ac",
+                                        "programlar ve ozellikler ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_services_console",
+                        "path":  "scripts/windows/library/open_services_console.bat",
+                        "description":  "Servisler konsolunu ac",
+                        "aliases":  [
+                                        "servisleri ac",
+                                        "services ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_device_manager",
+                        "path":  "scripts/windows/library/open_device_manager.bat",
+                        "description":  "Aygit yoneticisini ac",
+                        "aliases":  [
+                                        "aygit yoneticisini ac",
+                                        "device manager ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_event_viewer",
+                        "path":  "scripts/windows/library/open_event_viewer.bat",
+                        "description":  "Olay goruntuleyicisini ac",
+                        "aliases":  [
+                                        "olay goruntuleyicisini ac",
+                                        "event viewer ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_system_settings",
+                        "path":  "scripts/windows/library/open_system_settings.bat",
+                        "description":  "Sistem ayarlarini ac",
+                        "aliases":  [
+                                        "sistem ayarlarini ac",
+                                        "system settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_network_settings",
+                        "path":  "scripts/windows/library/open_network_settings.bat",
+                        "description":  "Ag ayarlarini ac",
+                        "aliases":  [
+                                        "ag ayarlarini ac",
+                                        "network settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_printer_settings",
+                        "path":  "scripts/windows/library/open_printer_settings.bat",
+                        "description":  "Yazici ayarlarini ac",
+                        "aliases":  [
+                                        "yazici ayarlarini ac",
+                                        "printers settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_sound_settings",
+                        "path":  "scripts/windows/library/open_sound_settings.bat",
+                        "description":  "Ses ayarlarini ac",
+                        "aliases":  [
+                                        "ses ayarlarini ac",
+                                        "sound settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_display_settings",
+                        "path":  "scripts/windows/library/open_display_settings.bat",
+                        "description":  "Ekran ayarlarini ac",
+                        "aliases":  [
+                                        "ekran ayarlarini ac",
+                                        "display settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_apps_settings",
+                        "path":  "scripts/windows/library/open_apps_settings.bat",
+                        "description":  "Uygulama ayarlarini ac",
+                        "aliases":  [
+                                        "uygulama ayarlarini ac",
+                                        "apps settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_storage_settings",
+                        "path":  "scripts/windows/library/open_storage_settings.bat",
+                        "description":  "Depolama ayarlarini ac",
+                        "aliases":  [
+                                        "depolama ayarlarini ac",
+                                        "storage settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_gmail",
+                        "path":  "scripts/windows/library/open_gmail.bat",
+                        "description":  "Gmail ac",
+                        "aliases":  [
+                                        "gmail ac",
+                                        "gmaili ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_outlook_web",
+                        "path":  "scripts/windows/library/open_outlook_web.bat",
+                        "description":  "Outlook web mail ac",
+                        "aliases":  [
+                                        "outlook web ac",
+                                        "outlook mail ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_google",
+                        "path":  "scripts/windows/library/open_google.bat",
+                        "description":  "Google ac",
+                        "aliases":  [
+                                        "google ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_youtube",
+                        "path":  "scripts/windows/library/open_youtube.bat",
+                        "description":  "YouTube ac",
+                        "aliases":  [
+                                        "youtube ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_google_drive",
+                        "path":  "scripts/windows/library/open_google_drive.bat",
+                        "description":  "Google Drive ac",
+                        "aliases":  [
+                                        "google drive ac",
+                                        "drive ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_whatsapp_web",
+                        "path":  "scripts/windows/library/open_whatsapp_web.bat",
+                        "description":  "WhatsApp Web ac",
+                        "aliases":  [
+                                        "whatsapp web ac",
+                                        "whatsapp ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_github",
+                        "path":  "scripts/windows/library/open_github.bat",
+                        "description":  "GitHub ac",
+                        "aliases":  [
+                                        "github ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_linkedin",
+                        "path":  "scripts/windows/library/open_linkedin.bat",
+                        "description":  "LinkedIn ac",
+                        "aliases":  [
+                                        "linkedin ac"
+                                    ]
+                    },
+                    {
+                        "name":  "capture_screenshot",
+                        "path":  "scripts/windows/library/capture_screenshot.bat",
+                        "description":  "Ekran goruntusu al",
+                        "aliases":  [
+                                        "ekran resmi al",
+                                        "screenshot al",
+                                        "ekran goruntusu al"
+                                    ]
+                    },
+                    {
+                        "name":  "system_status_report",
+                        "path":  "scripts/windows/library/system_status_report.bat",
+                        "description":  "Sistem durumu raporu al",
+                        "aliases":  [
+                                        "sistem raporu al",
+                                        "system status report"
+                                    ]
+                    },
+                    {
+                        "name":  "list_processes",
+                        "path":  "scripts/windows/library/list_processes.bat",
+                        "description":  "Surecleri listele",
+                        "aliases":  [
+                                        "surecleri listele",
+                                        "processleri listele"
+                                    ]
+                    },
+                    {
+                        "name":  "list_services",
+                        "path":  "scripts/windows/library/list_services.bat",
+                        "description":  "Servisleri listele",
+                        "aliases":  [
+                                        "servisleri listele",
+                                        "services listele"
+                                    ]
+                    },
+                    {
+                        "name":  "ipconfig_all",
+                        "path":  "scripts/windows/library/ipconfig_all.bat",
+                        "description":  "IP konfigurasyonunu goster",
+                        "aliases":  [
+                                        "ip bilgilerini goster",
+                                        "ipconfig goster",
+                                        "ag bilgisini goster"
+                                    ]
+                    },
+                    {
+                        "name":  "ping_google",
+                        "path":  "scripts/windows/library/ping_google.bat",
+                        "description":  "Google ping testi yap",
+                        "aliases":  [
+                                        "google ping at",
+                                        "googlea ping at"
+                                    ]
+                    },
+                    {
+                        "name":  "ping_cloudflare",
+                        "path":  "scripts/windows/library/ping_cloudflare.bat",
+                        "description":  "Cloudflare ping testi yap",
+                        "aliases":  [
+                                        "cloudflare ping at",
+                                        "1.1.1.1 ping at"
+                                    ]
+                    },
+                    {
+                        "name":  "open_resource_monitor",
+                        "path":  "scripts/windows/library/open_resource_monitor.bat",
+                        "description":  "Kaynak izleyiciyi ac",
+                        "aliases":  [
+                                        "kaynak izleyiciyi ac",
+                                        "resource monitor ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_reliability_monitor",
+                        "path":  "scripts/windows/library/open_reliability_monitor.bat",
+                        "description":  "Guvenilirlik gecmisini ac",
+                        "aliases":  [
+                                        "guvenilirlik monitorunu ac",
+                                        "reliability monitor ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_msinfo32",
+                        "path":  "scripts/windows/library/open_msinfo32.bat",
+                        "description":  "Sistem bilgisini ac",
+                        "aliases":  [
+                                        "sistem bilgisini ac",
+                                        "msinfo32 ac"
+                                    ]
+                    },
+                    {
+                        "name":  "restart_print_spooler",
+                        "path":  "scripts/windows/library/restart_print_spooler.bat",
+                        "description":  "Yazdirma servisini yeniden baslat",
+                        "aliases":  [
+                                        "spooleri yeniden baslat",
+                                        "print spooleri yeniden baslat"
+                                    ]
+                    },
+                    {
+                        "name":  "restart_explorer_shell",
+                        "path":  "scripts/windows/library/restart_explorer_shell.bat",
+                        "description":  "Explorer kabugunu yeniden baslat",
+                        "aliases":  [
+                                        "exploreri yeniden baslat",
+                                        "kabugu yeniden baslat"
+                                    ]
+                    },
+                    {
+                        "name":  "clear_clipboard",
+                        "path":  "scripts/windows/library/clear_clipboard.bat",
+                        "description":  "Panoyu temizle",
+                        "aliases":  [
+                                        "panoyu temizle",
+                                        "clipboard temizle"
+                                    ]
+                    },
+                    {
+                        "name":  "open_windows_update",
+                        "path":  "scripts/windows/library/open_windows_update.bat",
+                        "description":  "Windows Update ayarlarini ac",
+                        "aliases":  [
+                                        "windows update ac",
+                                        "guncelleme ayarlarini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_defender",
+                        "path":  "scripts/windows/library/open_defender.bat",
+                        "description":  "Windows Guvenligi ac",
+                        "aliases":  [
+                                        "defender ac",
+                                        "windows guvenligini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_date_time_settings",
+                        "path":  "scripts/windows/library/open_date_time_settings.bat",
+                        "description":  "Tarih saat ayarlarini ac",
+                        "aliases":  [
+                                        "tarih saat ayarlarini ac",
+                                        "date time settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_bluetooth_settings",
+                        "path":  "scripts/windows/library/open_bluetooth_settings.bat",
+                        "description":  "Bluetooth ayarlarini ac",
+                        "aliases":  [
+                                        "bluetooth ayarlarini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_wifi_settings",
+                        "path":  "scripts/windows/library/open_wifi_settings.bat",
+                        "description":  "WiFi ayarlarini ac",
+                        "aliases":  [
+                                        "wifi ayarlarini ac",
+                                        "kablosuz ayarlarini ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_taskbar_settings",
+                        "path":  "scripts/windows/library/open_taskbar_settings.bat",
+                        "description":  "Gorev cubugu ayarlarini ac",
+                        "aliases":  [
+                                        "gorev cubugu ayarlarini ac",
+                                        "taskbar settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_personalization_settings",
+                        "path":  "scripts/windows/library/open_personalization_settings.bat",
+                        "description":  "Kisisellestirme ayarlarini ac",
+                        "aliases":  [
+                                        "kisisellestirme ayarlarini ac",
+                                        "personalization settings ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_default_apps",
+                        "path":  "scripts/windows/library/open_default_apps.bat",
+                        "description":  "Varsayilan uygulamalari ac",
+                        "aliases":  [
+                                        "varsayilan uygulamalari ac",
+                                        "default apps ac"
+                                    ]
+                    },
+                    {
+                        "name":  "open_optional_features",
+                        "path":  "scripts/windows/library/open_optional_features.bat",
+                        "description":  "Istege bagli ozellikleri ac",
+                        "aliases":  [
+                                        "optional features ac",
+                                        "istege bagli ozellikleri ac"
+                                    ]
+                    }
+                ]
+}

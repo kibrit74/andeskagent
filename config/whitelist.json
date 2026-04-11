@@ -1,0 +1,24 @@
+{
+  "allowed_folders": [
+    "C:/Users/{user}/Desktop",
+    "C:/Users/{user}/Documents",
+    "C:/Users/{user}/Downloads"
+  ],
+  "allowed_scripts": [
+    "outlook_repair",
+    "dns_flush",
+    "clear_temp",
+    "office_repair",
+    "restart_service"
+  ],
+  "forbidden_actions": [
+    "delete_system_files",
+    "modify_registry",
+    "network_config_change"
+  ],
+  "mail_recipients_whitelist": [
+    "sen@domain.com",
+    "yavuzob@gmail.com",
+    "kibrit74@gmail.com"
+  ]
+}

@@ -1,0 +1,943 @@
+﻿[
+    {
+        "name":  "open_chrome",
+        "description":  "Chrome ac",
+        "aliases":  [
+                        "chrome ac",
+                        "google chrome ac",
+                        "chrome baslat"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+                          "--new-window",
+                          "about:blank"
+                      ],
+        "file_path":  "chrome"
+    },
+    {
+        "name":  "open_edge",
+        "description":  "Edge ac",
+        "aliases":  [
+                        "edge ac",
+                        "microsoft edge ac",
+                        "edge baslat"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+                          "--new-window",
+                          "about:blank"
+                      ],
+        "file_path":  "msedge"
+    },
+    {
+        "name":  "open_firefox",
+        "description":  "Firefox ac",
+        "aliases":  [
+                        "firefox ac",
+                        "mozilla firefox ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "firefox"
+    },
+    {
+        "name":  "open_outlook",
+        "description":  "Outlook ac",
+        "aliases":  [
+                        "outlook ac",
+                        "outlok ac",
+                        "outlook uygulamasini ac",
+                        "outlok uygulamasini ac"
+                    ],
+        "handler":  "start_process_candidates",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_candidates":  [
+                                "olk",
+                                "outlook",
+                                "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE",
+                                "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE"
+                            ]
+    },
+    {
+        "name":  "open_excel",
+        "description":  "Excel ac",
+        "aliases":  [
+                        "excel ac",
+                        "excel uygulamasini ac"
+                    ],
+        "handler":  "start_process_candidates",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_candidates":  [
+                                "excel",
+                                "C:\\Program Files\\Microsoft Office\\root\\Office16\\EXCEL.EXE",
+                                "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\EXCEL.EXE"
+                            ]
+    },
+    {
+        "name":  "open_word",
+        "description":  "Word ac",
+        "aliases":  [
+                        "word ac",
+                        "word uygulamasini ac"
+                    ],
+        "handler":  "start_process_candidates",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_candidates":  [
+                                "winword",
+                                "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
+                                "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\WINWORD.EXE"
+                            ]
+    },
+    {
+        "name":  "open_powerpoint",
+        "description":  "PowerPoint ac",
+        "aliases":  [
+                        "powerpoint ac",
+                        "slayt uygulamasini ac"
+                    ],
+        "handler":  "start_process_candidates",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_candidates":  [
+                                "powerpnt",
+                                "C:\\Program Files\\Microsoft Office\\root\\Office16\\POWERPNT.EXE",
+                                "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\POWERPNT.EXE"
+                            ]
+    },
+    {
+        "name":  "open_notepad",
+        "description":  "Notepad ac",
+        "aliases":  [
+                        "notepad ac",
+                        "not defteri ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "notepad"
+    },
+    {
+        "name":  "open_calc",
+        "description":  "Hesap makinesi ac",
+        "aliases":  [
+                        "hesap makinesi ac",
+                        "calculator ac",
+                        "calc ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "calc"
+    },
+    {
+        "name":  "open_paint",
+        "description":  "Paint ac",
+        "aliases":  [
+                        "paint ac",
+                        "boya ac",
+                        "mspaint ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "mspaint"
+    },
+    {
+        "name":  "open_explorer",
+        "description":  "Dosya gezgini ac",
+        "aliases":  [
+                        "dosya gezgini ac",
+                        "explorer ac",
+                        "file explorer ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "explorer"
+    },
+    {
+        "name":  "open_snipping_tool",
+        "description":  "Ekran alintisi aracini ac",
+        "aliases":  [
+                        "snipping tool ac",
+                        "ekran alintisi aracini ac",
+                        "kirpma aracini ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "SnippingTool"
+    },
+    {
+        "name":  "close_chrome",
+        "description":  "Chrome kapat",
+        "aliases":  [
+                        "chrome kapat",
+                        "chrome kapansin"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "chrome"
+                          ]
+    },
+    {
+        "name":  "close_edge",
+        "description":  "Edge kapat",
+        "aliases":  [
+                        "edge kapat",
+                        "edge kapansin"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "msedge"
+                          ]
+    },
+    {
+        "name":  "close_firefox",
+        "description":  "Firefox kapat",
+        "aliases":  [
+                        "firefox kapat"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "firefox"
+                          ]
+    },
+    {
+        "name":  "close_outlook",
+        "description":  "Outlook kapat",
+        "aliases":  [
+                        "outlook kapat",
+                        "outlok kapat"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "outlook"
+                          ]
+    },
+    {
+        "name":  "close_excel",
+        "description":  "Excel kapat",
+        "aliases":  [
+                        "excel kapat"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "excel"
+                          ]
+    },
+    {
+        "name":  "close_word",
+        "description":  "Word kapat",
+        "aliases":  [
+                        "word kapat"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "winword"
+                          ]
+    },
+    {
+        "name":  "close_powerpoint",
+        "description":  "PowerPoint kapat",
+        "aliases":  [
+                        "powerpoint kapat"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "powerpnt"
+                          ]
+    },
+    {
+        "name":  "close_notepad",
+        "description":  "Notepad kapat",
+        "aliases":  [
+                        "notepad kapat",
+                        "not defterini kapat"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "notepad"
+                          ]
+    },
+    {
+        "name":  "close_teams",
+        "description":  "Teams kapat",
+        "aliases":  [
+                        "teams kapat",
+                        "microsoft teams kapat"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "ms-teams",
+                              "teams"
+                          ]
+    },
+    {
+        "name":  "close_onedrive",
+        "description":  "OneDrive kapat",
+        "aliases":  [
+                        "onedrive kapat",
+                        "one drive kapat"
+                    ],
+        "handler":  "stop_process",
+        "chainable":  true,
+        "process_names":  [
+                              "OneDrive"
+                          ]
+    },
+    {
+        "name":  "open_desktop",
+        "description":  "Masaustunu ac",
+        "aliases":  [
+                        "masaustunu ac",
+                        "desktop ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "$env:USERPROFILE\\Desktop"
+    },
+    {
+        "name":  "open_documents",
+        "description":  "Belgeleri ac",
+        "aliases":  [
+                        "belgeleri ac",
+                        "documents ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "$env:USERPROFILE\\Documents"
+    },
+    {
+        "name":  "open_downloads",
+        "description":  "Indirilenleri ac",
+        "aliases":  [
+                        "indirilenleri ac",
+                        "downloads ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "$env:USERPROFILE\\Downloads"
+    },
+    {
+        "name":  "open_pictures",
+        "description":  "Resimler klasorunu ac",
+        "aliases":  [
+                        "resimleri ac",
+                        "pictures ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "$env:USERPROFILE\\Pictures"
+    },
+    {
+        "name":  "open_videos",
+        "description":  "Videolar klasorunu ac",
+        "aliases":  [
+                        "videolari ac",
+                        "videos ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "$env:USERPROFILE\\Videos"
+    },
+    {
+        "name":  "open_music",
+        "description":  "Muzik klasorunu ac",
+        "aliases":  [
+                        "muzikleri ac",
+                        "music klasorunu ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "$env:USERPROFILE\\Music"
+    },
+    {
+        "name":  "open_temp_folder",
+        "description":  "Temp klasorunu ac",
+        "aliases":  [
+                        "temp klasorunu ac",
+                        "gecici klasoru ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "$env:TEMP"
+    },
+    {
+        "name":  "open_startup_folder",
+        "description":  "Startup klasorunu ac",
+        "aliases":  [
+                        "startup klasorunu ac",
+                        "baslangic klasorunu ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "shell:startup"
+    },
+    {
+        "name":  "open_program_files",
+        "description":  "Program Files klasorunu ac",
+        "aliases":  [
+                        "program files klasorunu ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "C:\\Program Files"
+    },
+    {
+        "name":  "open_public_desktop",
+        "description":  "Ortak masaustunu ac",
+        "aliases":  [
+                        "ortak masaustunu ac",
+                        "public desktop ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "C:\\Users\\Public\\Desktop"
+    },
+    {
+        "name":  "open_task_manager",
+        "description":  "Gorev yoneticisini ac",
+        "aliases":  [
+                        "gorev yoneticisini ac",
+                        "task manager ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "taskmgr"
+    },
+    {
+        "name":  "open_control_panel",
+        "description":  "Denetim masasini ac",
+        "aliases":  [
+                        "denetim masasini ac",
+                        "control panel ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "control"
+    },
+    {
+        "name":  "open_programs_features",
+        "description":  "Programlar ve ozellikleri ac",
+        "aliases":  [
+                        "program ekle kaldiri ac",
+                        "programlar ve ozellikler ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "appwiz.cpl"
+    },
+    {
+        "name":  "open_services_console",
+        "description":  "Servisler konsolunu ac",
+        "aliases":  [
+                        "servisleri ac",
+                        "services ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "services.msc"
+    },
+    {
+        "name":  "open_device_manager",
+        "description":  "Aygit yoneticisini ac",
+        "aliases":  [
+                        "aygit yoneticisini ac",
+                        "device manager ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "devmgmt.msc"
+    },
+    {
+        "name":  "open_event_viewer",
+        "description":  "Olay goruntuleyicisini ac",
+        "aliases":  [
+                        "olay goruntuleyicisini ac",
+                        "event viewer ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "eventvwr.msc"
+    },
+    {
+        "name":  "open_system_settings",
+        "description":  "Sistem ayarlarini ac",
+        "aliases":  [
+                        "sistem ayarlarini ac",
+                        "system settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:system"
+    },
+    {
+        "name":  "open_network_settings",
+        "description":  "Ag ayarlarini ac",
+        "aliases":  [
+                        "ag ayarlarini ac",
+                        "network settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:network"
+    },
+    {
+        "name":  "open_printer_settings",
+        "description":  "Yazici ayarlarini ac",
+        "aliases":  [
+                        "yazici ayarlarini ac",
+                        "printers settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:printers"
+    },
+    {
+        "name":  "open_sound_settings",
+        "description":  "Ses ayarlarini ac",
+        "aliases":  [
+                        "ses ayarlarini ac",
+                        "sound settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:sound"
+    },
+    {
+        "name":  "open_display_settings",
+        "description":  "Ekran ayarlarini ac",
+        "aliases":  [
+                        "ekran ayarlarini ac",
+                        "display settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:display"
+    },
+    {
+        "name":  "open_apps_settings",
+        "description":  "Uygulama ayarlarini ac",
+        "aliases":  [
+                        "uygulama ayarlarini ac",
+                        "apps settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:appsfeatures"
+    },
+    {
+        "name":  "open_storage_settings",
+        "description":  "Depolama ayarlarini ac",
+        "aliases":  [
+                        "depolama ayarlarini ac",
+                        "storage settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:storagesense"
+    },
+    {
+        "name":  "open_gmail",
+        "description":  "Gmail ac",
+        "aliases":  [
+                        "gmail ac",
+                        "gmaili ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "https://mail.google.com/"
+    },
+    {
+        "name":  "open_outlook_web",
+        "description":  "Outlook web mail ac",
+        "aliases":  [
+                        "outlook web ac",
+                        "outlook mail ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "https://outlook.office.com/mail/"
+    },
+    {
+        "name":  "open_google",
+        "description":  "Google ac",
+        "aliases":  [
+                        "google ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "https://www.google.com/"
+    },
+    {
+        "name":  "open_youtube",
+        "description":  "YouTube ac",
+        "aliases":  [
+                        "youtube ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "https://www.youtube.com/"
+    },
+    {
+        "name":  "open_google_drive",
+        "description":  "Google Drive ac",
+        "aliases":  [
+                        "google drive ac",
+                        "drive ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "https://drive.google.com/"
+    },
+    {
+        "name":  "open_whatsapp_web",
+        "description":  "WhatsApp Web ac",
+        "aliases":  [
+                        "whatsapp web ac",
+                        "whatsapp ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "https://web.whatsapp.com/"
+    },
+    {
+        "name":  "open_github",
+        "description":  "GitHub ac",
+        "aliases":  [
+                        "github ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "https://github.com/"
+    },
+    {
+        "name":  "open_linkedin",
+        "description":  "LinkedIn ac",
+        "aliases":  [
+                        "linkedin ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "https://www.linkedin.com/"
+    },
+    {
+        "name":  "capture_screenshot",
+        "description":  "Ekran goruntusu al",
+        "aliases":  [
+                        "ekran resmi al",
+                        "screenshot al",
+                        "ekran goruntusu al"
+                    ],
+        "handler":  "powershell_inline",
+        "chainable":  true,
+        "script":  "$screenshotsDir = Join-Path $LibraryRepoBase \"data\\screenshots\"\nNew-Item -ItemType Directory -Path $screenshotsDir -Force | Out-Null\n$savePath = Join-Path $screenshotsDir (\"library-screenshot-\" + (Get-Date -Format \"yyyyMMdd-HHmmss\") + \".png\")\nAdd-Type -AssemblyName System.Windows.Forms\nAdd-Type -AssemblyName System.Drawing\n$bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen\n$bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height\n$graphics = [System.Drawing.Graphics]::FromImage($bitmap)\n$graphics.CopyFromScreen($bounds.X, $bounds.Y, 0, 0, $bitmap.Size)\n$bitmap.Save($savePath, [System.Drawing.Imaging.ImageFormat]::Png)\n$graphics.Dispose()\n$bitmap.Dispose()\nWrite-Output $savePath"
+    },
+    {
+        "name":  "system_status_report",
+        "description":  "Sistem durumu raporu al",
+        "aliases":  [
+                        "sistem raporu al",
+                        "system status report"
+                    ],
+        "handler":  "powershell_inline",
+        "chainable":  true,
+        "script":  "$os = Get-CimInstance Win32_OperatingSystem\n$cpu = Get-CimInstance Win32_Processor | Select-Object -First 1\n[pscustomobject]@{\n    ComputerName = $env:COMPUTERNAME\n    OS = $os.Caption\n    RAM_GB = [math]::Round($os.TotalVisibleMemorySize / 1MB, 2)\n    CPU = $cpu.Name\n    FreePhysicalMemoryMB = [math]::Round($os.FreePhysicalMemory / 1KB, 2)\n} | ConvertTo-Json -Depth 4"
+    },
+    {
+        "name":  "list_processes",
+        "description":  "Surecleri listele",
+        "aliases":  [
+                        "surecleri listele",
+                        "processleri listele"
+                    ],
+        "handler":  "powershell_inline",
+        "chainable":  true,
+        "script":  "Get-Process | Sort-Object ProcessName | Select-Object -First 30 ProcessName, Id | Format-Table -AutoSize | Out-String"
+    },
+    {
+        "name":  "list_services",
+        "description":  "Servisleri listele",
+        "aliases":  [
+                        "servisleri listele",
+                        "services listele"
+                    ],
+        "handler":  "powershell_inline",
+        "chainable":  true,
+        "script":  "Get-Service | Sort-Object Status, DisplayName | Select-Object -First 30 Status, Name, DisplayName | Format-Table -AutoSize | Out-String"
+    },
+    {
+        "name":  "ipconfig_all",
+        "description":  "IP konfigurasyonunu goster",
+        "aliases":  [
+                        "ip bilgilerini goster",
+                        "ipconfig goster",
+                        "ag bilgisini goster"
+                    ],
+        "handler":  "run_command_capture",
+        "chainable":  true,
+        "arguments":  [
+                          "/all"
+                      ],
+        "command":  "ipconfig"
+    },
+    {
+        "name":  "ping_google",
+        "description":  "Google ping testi yap",
+        "aliases":  [
+                        "google ping at",
+                        "googlea ping at"
+                    ],
+        "handler":  "run_command_capture",
+        "chainable":  true,
+        "arguments":  [
+                          "google.com",
+                          "-n",
+                          "4"
+                      ],
+        "command":  "ping"
+    },
+    {
+        "name":  "ping_cloudflare",
+        "description":  "Cloudflare ping testi yap",
+        "aliases":  [
+                        "cloudflare ping at",
+                        "1.1.1.1 ping at"
+                    ],
+        "handler":  "run_command_capture",
+        "chainable":  true,
+        "arguments":  [
+                          "1.1.1.1",
+                          "-n",
+                          "4"
+                      ],
+        "command":  "ping"
+    },
+    {
+        "name":  "open_resource_monitor",
+        "description":  "Kaynak izleyiciyi ac",
+        "aliases":  [
+                        "kaynak izleyiciyi ac",
+                        "resource monitor ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "resmon"
+    },
+    {
+        "name":  "open_reliability_monitor",
+        "description":  "Guvenilirlik gecmisini ac",
+        "aliases":  [
+                        "guvenilirlik monitorunu ac",
+                        "reliability monitor ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+                          "/rel"
+                      ],
+        "file_path":  "perfmon"
+    },
+    {
+        "name":  "open_msinfo32",
+        "description":  "Sistem bilgisini ac",
+        "aliases":  [
+                        "sistem bilgisini ac",
+                        "msinfo32 ac"
+                    ],
+        "handler":  "start_process",
+        "chainable":  true,
+        "arguments":  [
+
+                      ],
+        "file_path":  "msinfo32"
+    },
+    {
+        "name":  "restart_print_spooler",
+        "description":  "Yazdirma servisini yeniden baslat",
+        "aliases":  [
+                        "spooleri yeniden baslat",
+                        "print spooleri yeniden baslat"
+                    ],
+        "handler":  "powershell_inline",
+        "chainable":  true,
+        "script":  "Restart-Service -Name Spooler -ErrorAction Stop; \u0027Spooler yeniden baslatildi.\u0027"
+    },
+    {
+        "name":  "restart_explorer_shell",
+        "description":  "Explorer kabugunu yeniden baslat",
+        "aliases":  [
+                        "exploreri yeniden baslat",
+                        "kabugu yeniden baslat"
+                    ],
+        "handler":  "powershell_inline",
+        "chainable":  true,
+        "script":  "Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue; Start-Process explorer.exe; \u0027Explorer yeniden baslatildi.\u0027"
+    },
+    {
+        "name":  "clear_clipboard",
+        "description":  "Panoyu temizle",
+        "aliases":  [
+                        "panoyu temizle",
+                        "clipboard temizle"
+                    ],
+        "handler":  "powershell_inline",
+        "chainable":  true,
+        "script":  "Set-Clipboard -Value \"\"; \"Pano temizlendi.\""
+    },
+    {
+        "name":  "open_windows_update",
+        "description":  "Windows Update ayarlarini ac",
+        "aliases":  [
+                        "windows update ac",
+                        "guncelleme ayarlarini ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:windowsupdate"
+    },
+    {
+        "name":  "open_defender",
+        "description":  "Windows Guvenligi ac",
+        "aliases":  [
+                        "defender ac",
+                        "windows guvenligini ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "windowsdefender:"
+    },
+    {
+        "name":  "open_date_time_settings",
+        "description":  "Tarih saat ayarlarini ac",
+        "aliases":  [
+                        "tarih saat ayarlarini ac",
+                        "date time settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:dateandtime"
+    },
+    {
+        "name":  "open_bluetooth_settings",
+        "description":  "Bluetooth ayarlarini ac",
+        "aliases":  [
+                        "bluetooth ayarlarini ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:bluetooth"
+    },
+    {
+        "name":  "open_wifi_settings",
+        "description":  "WiFi ayarlarini ac",
+        "aliases":  [
+                        "wifi ayarlarini ac",
+                        "kablosuz ayarlarini ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:network-wifi"
+    },
+    {
+        "name":  "open_taskbar_settings",
+        "description":  "Gorev cubugu ayarlarini ac",
+        "aliases":  [
+                        "gorev cubugu ayarlarini ac",
+                        "taskbar settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:taskbar"
+    },
+    {
+        "name":  "open_personalization_settings",
+        "description":  "Kisisellestirme ayarlarini ac",
+        "aliases":  [
+                        "kisisellestirme ayarlarini ac",
+                        "personalization settings ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:personalization"
+    },
+    {
+        "name":  "open_default_apps",
+        "description":  "Varsayilan uygulamalari ac",
+        "aliases":  [
+                        "varsayilan uygulamalari ac",
+                        "default apps ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:defaultapps"
+    },
+    {
+        "name":  "open_optional_features",
+        "description":  "Istege bagli ozellikleri ac",
+        "aliases":  [
+                        "optional features ac",
+                        "istege bagli ozellikleri ac"
+                    ],
+        "handler":  "start_shell_target",
+        "chainable":  true,
+        "target":  "ms-settings:optionalfeatures"
+    }
+]

@@ -1,0 +1,21 @@
+{
+  "name": "teknikajan",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": ".venv\\Scripts\\python.exe -m uvicorn server.main:app --reload",
+    "ping": ".venv\\Scripts\\python.exe -m cli.main ping",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^4.0.379"
+  },
+  "dependencies": {
+    "playwright": "^1.59.1"
+  }
+}
