@@ -1,35 +1,23 @@
 const terminalBody = document.getElementById('terminal-body');
 const cliInput = document.getElementById('cli-input');
-const accessLink = document.getElementById('access-link');
-const accessHint = document.getElementById('access-hint');
-const qrImage = document.getElementById('qr-image');
 
-function buildShareUrl() {
-    const url = new URL(window.location.href);
-    url.hash = '';
-    return url.toString();
+function getApiBaseUrl() {
+    return window.location.origin;
 }
 
-function hydrateAccessPanel() {
-    const shareUrl = buildShareUrl();
-    accessLink.href = shareUrl;
-    accessLink.textContent = shareUrl;
-
-    const encodedUrl = encodeURIComponent(shareUrl);
-    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodedUrl}`;
-
-    const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-    accessHint.textContent = isLocalhost
-        ? 'Not: QR kod localhost adresini gösterir. Telefonda kullanmak için sayfayi yerel ag IP adresiyle acin.'
-        : 'QR kod bu sayfanin aktif adresine baglidir.';
-}
-
-// Otomatik scroll
 function scrollToBottom() {
     terminalBody.scrollTop = terminalBody.scrollHeight;
 }
 
-// Yeni terminal elementi ekleme
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
 function createMessageElement(contentHtml) {
     const div = document.createElement('div');
     div.className = 'message';
@@ -39,83 +27,132 @@ function createMessageElement(contentHtml) {
     return div;
 }
 
-// Rastgele işlem senaryosu oluşturur (Agentic Step-by-Step UI Mock)
-async function simulateAgenticExecution(promptText) {
-    // 1. Kullanıcı komutunu göster
-    createMessageElement(`
-        <span style="color: var(--accent-blue);">❯</span>
-        <span class="user-command">${promptText}</span>
-    `);
-    
-    // Adım bloğu konteynerı
-    const stepBlock = document.createElement('div');
-    stepBlock.className = 'step-block';
-    terminalBody.appendChild(stepBlock);
-    
-    function addStep(htmlHtml) {
-        const step = document.createElement('div');
-        step.className = 'step';
-        step.innerHTML = htmlHtml;
-        stepBlock.appendChild(step);
-        scrollToBottom();
-        return step;
+function renderItems(items) {
+    if (!Array.isArray(items) || !items.length) {
+        return '<div class="result-block">Sonuc bulunamadi.</div>';
     }
 
-    // 2. Thinking phase
-    const thinkingStep = addStep(`
-        <span class="spinner">⠋</span>
-        <span class="step thinking">Görev bağlamı analiz ediliyor...</span>
-    `);
-    await sleep(1500);
-    thinkingStep.innerHTML = `<span>✓</span><span class="step success">Bağlam analiz edildi.</span>`;
+    const rows = items.slice(0, 8).map((item) => {
+        const name = escapeHtml(item.name || item.path || 'Kayit');
+        const path = escapeHtml(item.path || '');
+        return `<li><strong>${name}</strong>${path ? `<div class="subtle">${path}</div>` : ''}</li>`;
+    }).join('');
 
-    // 3. Tool execution (Dosya arama)
-    const toolUse1 = addStep(`
-        <span class="spinner">⠋</span>
-        <span class="step tool-run">Çalıştırılıyor: grep_search "auth" ./src/</span>
-    `);
-    await sleep(2000);
-    toolUse1.innerHTML = `<span>⚡</span><span class="step tool-run">Araç yürütüldü: grep_search</span>`;
+    return `<div class="result-block"><ul class="result-list">${rows}</ul></div>`;
+}
 
-    // 4. İkinci işlem planlama
-    const toolUse2 = addStep(`
-        <span class="spinner">⠋</span>
-        <span class="step tool-run">Çalıştırılıyor: write_to_file ./src/config.js</span>
-    `);
-    await sleep(1800);
-    toolUse2.innerHTML = `<span>⚡</span><span class="step tool-run">Araç yürütüldü: Dosya başarıyla oluşturuldu/düzenlendi.</span>`;
+function renderResult(result) {
+    if (!result) {
+        return '';
+    }
 
-    // 5. Final cevabı
-    await sleep(1000);
-    createMessageElement(`
-        <span style="color: var(--accent-green);">🤖</span>
+    if (result.items) {
+        return renderItems(result.items);
+    }
+
+    if (Array.isArray(result.steps) && result.steps.length) {
+        return result.steps.map((step) => `
+            <div class="result-block">
+                <div><strong>${escapeHtml(step.tool || 'islem')}</strong></div>
+                <pre>${escapeHtml(JSON.stringify(step, null, 2))}</pre>
+            </div>
+        `).join('');
+    }
+
+    if (result.status === 'pending_approval') {
+        return '';
+    }
+
+    return `
         <div class="result-block">
-            İstediğiniz yönergeler doğrultusunda ilgili işlemleri gerçekleştirdim. \n\nLogları ve projeyi kontrol edebilirsiniz. Herhangi bir hata bulunamadı.
+            <pre>${escapeHtml(JSON.stringify(result, null, 2))}</pre>
+        </div>
+    `;
+}
+
+function attachApprovalHandler(button, originalText) {
+    if (!button) {
+        return;
+    }
+
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        await sendPrompt(originalText, true);
+    });
+}
+
+function renderResponse(data, originalText) {
+    createMessageElement(`
+        <span style="color: var(--accent-blue);">></span>
+        <span class="user-command">${escapeHtml(originalText)}</span>
+    `);
+
+    const responseElement = createMessageElement(`
+        <span style="color: ${data.error ? 'var(--accent-red)' : 'var(--accent-green)'};">●</span>
+        <div class="response-stack">
+            <div class="result-block">
+                <div><strong>${escapeHtml(data.summary || (data.error ? 'Islem basarisiz.' : 'Islem tamamlandi.'))}</strong></div>
+                <div class="subtle">Aksiyon: ${escapeHtml(data.action || 'unknown')} | Guven: ${Math.round((data.confidence || 0) * 100)}%</div>
+                ${data.next_step ? `<div class="subtle">Devam: ${escapeHtml(data.next_step)}</div>` : ''}
+                ${data.error ? `<div class="error-text">${escapeHtml(data.error)}</div>` : ''}
+            </div>
+            ${renderResult(data.result)}
+            ${data.approval?.status === 'pending' ? '<button class="approve-btn">Onayla ve Calistir</button>' : ''}
         </div>
     `);
+
+    attachApprovalHandler(responseElement.querySelector('.approve-btn'), originalText);
 }
 
-// Yardımcı fonksiyon
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+async function sendPrompt(promptText, approved = false) {
+    const pending = createMessageElement(`
+        <span class="spinner">o</span>
+        <span class="step thinking">Sunucuya baglaniliyor...</span>
+    `);
+
+    try {
+        const response = await fetch(`${getApiBaseUrl()}/command-ui`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: promptText, approved }),
+        });
+
+        pending.remove();
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderResponse(data, promptText);
+    } catch (error) {
+        pending.remove();
+        createMessageElement(`
+            <span style="color: var(--accent-red);">●</span>
+            <div class="result-block">
+                <div><strong>Sunucuya ulasilamadi.</strong></div>
+                <div class="error-text">${escapeHtml(error.message || String(error))}</div>
+                <div class="subtle">API adresi: ${escapeHtml(getApiBaseUrl())}/command-ui</div>
+            </div>
+        `);
+    }
 }
 
-// Input enter event
-cliInput.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter' && cliInput.value.trim() !== '') {
-        const value = cliInput.value;
+cliInput.addEventListener('keydown', async (event) => {
+    if (event.key === 'Enter' && cliInput.value.trim() !== '') {
+        const value = cliInput.value.trim();
         cliInput.value = '';
         cliInput.disabled = true;
-        
-        await simulateAgenticExecution(value);
-        
+        await sendPrompt(value, false);
         cliInput.disabled = false;
         cliInput.focus();
     }
 });
 
-// Sayfa yüklendiğinde inputa odaklan
 window.addEventListener('load', () => {
-    hydrateAccessPanel();
+    createMessageElement(`
+        <span style="color: #6e7681;">API</span>
+        <span class="text">Baglanti hedefi: ${escapeHtml(getApiBaseUrl())}/command-ui</span>
+    `);
     cliInput.focus();
 });

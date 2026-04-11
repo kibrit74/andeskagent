@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeknikAjan Mobil Erişim</title>
+    <style>
+        :root {
+            --bg: #07111f;
+            --panel: rgba(9, 19, 34, 0.82);
+            --border: rgba(130, 170, 255, 0.22);
+            --text: #f3f7ff;
+            --muted: #9fb0c7;
+            --accent: #59b4ff;
+            --accent-2: #8cffc1;
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+            --font: "Segoe UI", system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            color: var(--text);
+            font-family: var(--font);
+            background:
+                radial-gradient(circle at top left, rgba(89, 180, 255, 0.22), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(140, 255, 193, 0.18), transparent 30%),
+                linear-gradient(160deg, #030712, #081426 45%, #07111f);
+        }
+
+        .shell {
+            width: min(960px, 100%);
+            display: grid;
+            grid-template-columns: 1.15fr 320px;
+            gap: 24px;
+            padding: 28px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        .eyebrow {
+            margin: 0 0 10px;
+            font-size: 0.78rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        h1 {
+            margin: 0 0 12px;
+            font-size: clamp(2rem, 4vw, 3.4rem);
+            line-height: 1.02;
+        }
+
+        p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .button,
+        .link-box {
+            border-radius: 16px;
+            text-decoration: none;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 52px;
+            padding: 0 18px;
+            background: linear-gradient(135deg, var(--accent), #7ac8ff);
+            color: #04111f;
+            font-weight: 700;
+        }
+
+        .link-box {
+            display: block;
+            margin-top: 18px;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        .meta {
+            margin-top: 14px;
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+
+        .qr-panel {
+            padding: 18px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.04);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }
+
+        .qr-panel img {
+            width: min(100%, 260px);
+            aspect-ratio: 1;
+            background: #fff;
+            border-radius: 20px;
+            padding: 10px;
+        }
+
+        .qr-caption {
+            text-align: center;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 800px) {
+            .shell {
+                grid-template-columns: 1fr;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section>
+            <div class="eyebrow">TeknikAjan</div>
+            <h1>Mobil arayüze bu ekrandan geçin.</h1>
+            <p>Bu kök adres artık dizin listesi yerine erişim ekranı açıyor. Telefonda QR okutabilir veya bağlantıya dokunup doğrudan mobil arayüze geçebilirsiniz.</p>
+            <div class="actions">
+                <a class="button" id="open-link" href="/mobile-cli/">Mobil Arayüzü Aç</a>
+            </div>
+            <a class="link-box" id="direct-link" href="/mobile-cli/">/mobile-cli/</a>
+            <div class="meta" id="meta"></div>
+        </section>
+        <aside class="qr-panel">
+            <img id="qr-image" alt="Mobil arayuz icin QR kod">
+            <div class="qr-caption">Telefon ve bilgisayar ayni agdaysa bu kod dogrudan mobil arayuze gider.</div>
+        </aside>
+    </main>
+
+    <script>
+        const targetUrl = new URL('./mobile-cli/', window.location.href).toString();
+        const directLink = document.getElementById('direct-link');
+        const openLink = document.getElementById('open-link');
+        const qrImage = document.getElementById('qr-image');
+        const meta = document.getElementById('meta');
+
+        directLink.href = targetUrl;
+        directLink.textContent = targetUrl;
+        openLink.href = targetUrl;
+        qrImage.src = `/qr.svg?target=${encodeURIComponent(targetUrl)}`;
+        meta.textContent = `Hedef adres: ${targetUrl}`;
+    </script>
+</body>
+</html>
