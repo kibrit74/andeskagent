@@ -16,6 +16,6 @@
   "playwright_user_data_dir": "data/playwright-edge-profile",
   "playwright_headless": false,
   "playwright_mail_url": "https://mail.google.com/mail/u/0/#inbox",
-  "gemini_api_key": "AIzaSyBOjcsOrnjDv8f240iGAChk5MN5YzjJmg8",
+  "gemini_api_key": "AIzaSyAS4Hg4SxuJoHQW0NQd-5B-H7lxvfo8wAs",
   "gemini_model": "gemini-3-flash-preview"
 }

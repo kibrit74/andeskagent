@@ -98,3 +98,13 @@ class KnowledgeService:
             return f"[{issues_result.source}] {issues_result.content}"
         return None
 
+    def get_script_catalog_summary(self, limit: int = 20) -> str:
+        items = self.load_script_catalog()[:limit]
+        if not items:
+            return "Yok"
+        summary_rows: list[str] = []
+        for item in items:
+            aliases = ", ".join(item["aliases"][:4]) if item.get("aliases") else "-"
+            description = str(item.get("description", "")).strip() or "-"
+            summary_rows.append(f"- {item['name']}: {description} | aliases: {aliases}")
+        return "\n".join(summary_rows)

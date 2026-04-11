@@ -4,9 +4,18 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from adapters.file_adapter import copy_file_to_location, search_files
+from adapters.desktop_adapter import click_ui, focus_window, list_windows, read_screen, take_screenshot, wait_for_window
+from adapters.file_adapter import (
+    copy_file_to_location,
+    create_folder_in_location,
+    delete_file_in_place,
+    move_file_to_location,
+    rename_file_in_place,
+    search_files,
+)
 from adapters.mail_adapter import send_email_with_attachment
 from adapters.script_adapter import generate_and_run_script, run_script
+from adapters.script_adapter import _open_application as open_application
 from adapters.system_adapter import get_system_status
 from adapters.system_adapter import get_system_status
 from core.auth import bearer_token_dependency
@@ -90,6 +99,25 @@ def _humanize_error(message: str) -> str:
     return message or "Islem tamamlanamadi."
 
 
+def _search_with_fallback(*, query: str, location: str, extension: str | None) -> tuple[list[dict], str]:
+    preferred = (location or "desktop").strip() or "desktop"
+    ordered_locations: list[str] = [preferred]
+    for candidate in ("desktop", "documents", "downloads"):
+        if candidate != preferred:
+            ordered_locations.append(candidate)
+
+    for candidate_location in ordered_locations:
+        items = search_files(
+            query=query,
+            location=candidate_location,
+            extension=extension,
+            allowed_folders=settings.allowed_folders,
+        )
+        if items:
+            return items, candidate_location
+    return [], preferred
+
+
 @router.post("/command")
 def execute_command(request: CommandRequest) -> CommandResponse:
     """Dogal dil komutunu parse et ve ilgili aksiyonu calistir."""
@@ -106,22 +134,20 @@ def execute_command(request: CommandRequest) -> CommandResponse:
         parsed = parse_command(request.text, settings)
 
         if parsed.action == "search_file":
-            items = search_files(
+            items, resolved_location = _search_with_fallback(
                 query=parsed.params.get("query", ""),
                 location=parsed.params.get("location", "desktop"),
                 extension=parsed.params.get("extension"),
-                allowed_folders=settings.allowed_folders,
             )
             summary = f"{len(items)} adet dosya bulundu."
             next_step = "Isterseniz bu dosyalari siralayabilir veya size gonderilmesini isteyebilirsiniz."
-            result = {"items": items, "count": len(items)}
+            result = {"items": items, "count": len(items), "resolved_location": resolved_location}
 
         elif parsed.action == "copy_file":
-            items = search_files(
+            items, resolved_location = _search_with_fallback(
                 query=parsed.params.get("query", ""),
                 location=parsed.params.get("location", "desktop"),
                 extension=parsed.params.get("extension"),
-                allowed_folders=settings.allowed_folders,
             )
             if items:
                 selected = max(items, key=lambda x: x.get("modified_at", 0))
@@ -144,18 +170,131 @@ def execute_command(request: CommandRequest) -> CommandResponse:
                         "copied_file": copied,
                         "status": "copied",
                         "message": "Dosyanin kopyasi olusturuldu.",
+                        "resolved_location": resolved_location,
                     }
             else:
                 summary = "Kopyalanacak dosya bulunamadi."
                 next_step = "Dosyanin adini veya uzantisini kontrol ederek tekrar deneyin."
                 result = {"message": "Eslesen dosya bulunamadi."}
 
-        elif parsed.action == "send_latest":
-            items = search_files(
+        elif parsed.action == "move_file":
+            items, resolved_location = _search_with_fallback(
                 query=parsed.params.get("query", ""),
                 location=parsed.params.get("location", "desktop"),
                 extension=parsed.params.get("extension"),
-                allowed_folders=settings.allowed_folders,
+            )
+            if items:
+                selected = max(items, key=lambda x: x.get("modified_at", 0))
+                destination_location = parsed.params.get("destination_location", "desktop")
+                approval_required = True
+                approval_status = "approved" if request.approved else "pending"
+                if approval_status == "pending":
+                    summary = f"'{selected['name']}' dosyasi {destination_location} konumuna tasinacak. Onay gerekiyor."
+                    next_step = "Tasima islemini onaylayin."
+                    result = {
+                        "source_file": selected,
+                        "destination_location": destination_location,
+                        "resolved_location": resolved_location,
+                        "status": "pending_approval",
+                    }
+                else:
+                    moved = move_file_to_location(
+                        selected["path"],
+                        destination_location=destination_location,
+                        allowed_folders=settings.allowed_folders,
+                    )
+                    summary = "Dosya tasima islemi tamamlandi."
+                    next_step = "Baska bir ihtiyaciniz var mi?"
+                    result = {
+                        "source_file": selected,
+                        "moved_file": moved,
+                        "status": "moved",
+                        "resolved_location": resolved_location,
+                    }
+            else:
+                summary = "Tasinacak dosya bulunamadi."
+                next_step = "Dosya adini veya uzantisini kontrol ederek tekrar deneyin."
+                result = {"message": "Eslesen dosya bulunamadi."}
+
+        elif parsed.action == "rename_file":
+            items, resolved_location = _search_with_fallback(
+                query=parsed.params.get("query", ""),
+                location=parsed.params.get("location", "desktop"),
+                extension=parsed.params.get("extension"),
+            )
+            if items:
+                selected = max(items, key=lambda x: x.get("modified_at", 0))
+                new_name = parsed.params.get("new_name", "")
+                approval_required = True
+                approval_status = "approved" if request.approved else "pending"
+                if approval_status == "pending":
+                    summary = f"'{selected['name']}' dosyasi yeniden adlandirilacak. Onay gerekiyor."
+                    next_step = "Yeniden adlandirma islemini onaylayin."
+                    result = {
+                        "source_file": selected,
+                        "new_name": new_name,
+                        "resolved_location": resolved_location,
+                        "status": "pending_approval",
+                    }
+                else:
+                    renamed = rename_file_in_place(
+                        selected["path"],
+                        new_name=str(new_name),
+                        allowed_folders=settings.allowed_folders,
+                    )
+                    summary = "Dosya yeniden adlandirildi."
+                    next_step = "Baska bir ihtiyaciniz var mi?"
+                    result = {
+                        "source_file": selected,
+                        "renamed_file": renamed,
+                        "status": "renamed",
+                        "resolved_location": resolved_location,
+                    }
+            else:
+                summary = "Yeniden adlandirilacak dosya bulunamadi."
+                next_step = "Dosya adini veya uzantisini kontrol ederek tekrar deneyin."
+                result = {"message": "Eslesen dosya bulunamadi."}
+
+        elif parsed.action == "delete_file":
+            items, resolved_location = _search_with_fallback(
+                query=parsed.params.get("query", ""),
+                location=parsed.params.get("location", "desktop"),
+                extension=parsed.params.get("extension"),
+            )
+            if items:
+                selected = max(items, key=lambda x: x.get("modified_at", 0))
+                approval_required = True
+                approval_status = "approved" if request.approved else "pending"
+                if approval_status == "pending":
+                    summary = f"'{selected['name']}' dosyasi silinecek. Onay gerekiyor."
+                    next_step = "Silme islemini onaylayin."
+                    result = {
+                        "source_file": selected,
+                        "resolved_location": resolved_location,
+                        "status": "pending_approval",
+                    }
+                else:
+                    deleted = delete_file_in_place(
+                        selected["path"],
+                        allowed_folders=settings.allowed_folders,
+                    )
+                    summary = "Dosya silindi."
+                    next_step = "Baska bir ihtiyaciniz var mi?"
+                    result = {
+                        "deleted_file": deleted,
+                        "status": "deleted",
+                        "resolved_location": resolved_location,
+                    }
+            else:
+                summary = "Silinecek dosya bulunamadi."
+                next_step = "Dosya adini veya uzantisini kontrol ederek tekrar deneyin."
+                result = {"message": "Eslesen dosya bulunamadi."}
+
+        elif parsed.action == "send_latest":
+            items, resolved_location = _search_with_fallback(
+                query=parsed.params.get("query", ""),
+                location=parsed.params.get("location", "desktop"),
+                extension=parsed.params.get("extension"),
             )
             if items:
                 latest = max(items, key=lambda x: x.get("modified_at", 0))
@@ -194,6 +333,7 @@ def execute_command(request: CommandRequest) -> CommandResponse:
                             "recipient": recipient,
                             "status": "sent",
                             "message": "En son dosya bulundu ve gonderildi.",
+                            "resolved_location": resolved_location,
                         }
                 else:
                     summary = f"En son dosya ({latest['name']}) bulundu, ancak alici belirtilmedigi icin gonderilemiyor."
@@ -201,11 +341,125 @@ def execute_command(request: CommandRequest) -> CommandResponse:
                     result = {
                         "latest_file": latest,
                         "message": "Dosya bulundu. Gondermek icin alici e-posta adresi gerekli.",
+                        "resolved_location": resolved_location,
                     }
             else:
                 summary = "Uzanti veya konuma uygun dosya bulunamadi."
                 next_step = "Farkli bir klasor belirtmeyi veya uzantiyi degistirmeyi deneyin."
                 result = {"message": "Eslesen dosya bulunamadi."}
+
+        elif parsed.action == "create_folder":
+            approval_required = True
+            approval_status = "approved" if request.approved else "pending"
+            folder_name = parsed.params.get("folder_name", "Yeni Klasor")
+            destination_location = parsed.params.get("destination_location", "desktop")
+            if approval_status == "pending":
+                summary = f"'{folder_name}' isimli klasor {destination_location} konumunda olusturulacak. Onay gerekiyor."
+                next_step = "Klasor olusturma islemini onaylayin."
+                result = {
+                    "folder_name": folder_name,
+                    "destination_location": destination_location,
+                    "status": "pending_approval",
+                }
+            else:
+                created = create_folder_in_location(
+                    str(folder_name),
+                    destination_location=str(destination_location),
+                    allowed_folders=settings.allowed_folders,
+                )
+                summary = f"'{created['name']}' klasoru olusturuldu."
+                next_step = "Baska bir ihtiyaciniz var mi?"
+                result = {
+                    "created_folder": created,
+                    "status": "created",
+                }
+
+        elif parsed.action == "open_application":
+            approval_required = True
+            approval_status = "approved" if request.approved else "pending"
+            app_name = parsed.params.get("app_name", "")
+            target = parsed.params.get("target")
+            if approval_status == "pending":
+                summary = f"'{app_name}' uygulamasi acilacak. Onay gerekiyor."
+                next_step = "Uygulamayi acmak icin islemi onaylayin."
+                result = {"app_name": app_name, "target": target, "status": "pending_approval"}
+            else:
+                resolved_target = str(target).strip() if target is not None else ""
+                result = open_application(app_name=str(app_name), target=resolved_target or None)
+                summary = f"'{app_name}' uygulamasi acildi veya one getirildi."
+                next_step = "Gerekirse sonraki adimi yazabilirsiniz."
+
+        elif parsed.action == "list_windows":
+            result = list_windows()
+            summary = f"{result.get('count', 0)} adet gorunen pencere bulundu."
+            next_step = "Odaklanmak istediginiz pencereyi belirtebilirsiniz."
+
+        elif parsed.action == "focus_window":
+            approval_required = True
+            approval_status = "approved" if request.approved else "pending"
+            if approval_status == "pending":
+                summary = "Belirtilen pencereye gecilecek. Onay gerekiyor."
+                next_step = "Pencere odagini degistirmek icin islemi onaylayin."
+                result = {"status": "pending_approval", **parsed.params}
+            else:
+                result = focus_window(
+                    title_contains=str(parsed.params.get("title_contains", "")).strip() or None,
+                    process_name=str(parsed.params.get("process_name", "")).strip() or None,
+                )
+                summary = "Pencere one getirildi."
+                next_step = "Gerekirse sonraki komutu yazabilirsiniz."
+
+        elif parsed.action == "wait_for_window":
+            result = wait_for_window(
+                title_contains=str(parsed.params.get("title_contains", "")).strip() or None,
+                process_name=str(parsed.params.get("process_name", "")).strip() or None,
+                timeout_seconds=int(parsed.params.get("timeout_seconds", 20) or 20),
+            )
+            summary = "Beklenen pencere bulundu."
+            next_step = "Gerekirse pencereye odaklanabilir veya bir sonraki adimi calistirabilirsiniz."
+
+        elif parsed.action == "click_ui":
+            approval_required = True
+            approval_status = "approved" if request.approved else "pending"
+            if approval_status == "pending":
+                summary = "Arayuzde bir hedefe tiklanacak. Onay gerekiyor."
+                next_step = "Tiklama islemini onaylayin."
+                result = {"status": "pending_approval", **parsed.params}
+            else:
+                result = click_ui(
+                    x=int(parsed.params["x"]) if "x" in parsed.params else None,
+                    y=int(parsed.params["y"]) if "y" in parsed.params else None,
+                    button=str(parsed.params.get("button", "left")).strip() or "left",
+                    text=str(parsed.params.get("text", "")).strip() or None,
+                    title_contains=str(parsed.params.get("title_contains", "")).strip() or None,
+                    process_name=str(parsed.params.get("process_name", "")).strip() or None,
+                )
+                summary = "Hedef arayuz ogesi tiklandi."
+                next_step = "Gerekirse ekrani tekrar okuyabilir veya bir sonraki adimi yazabilirsiniz."
+
+        elif parsed.action == "read_screen":
+            approval_required = True
+            approval_status = "approved" if request.approved else "pending"
+            if approval_status == "pending":
+                summary = "Ekran durumu toplanacak. Onay gerekiyor."
+                next_step = "Ekran goruntusu almak icin islemi onaylayin."
+                result = {"status": "pending_approval"}
+            else:
+                result = read_screen()
+                summary = "Ekran durumu toplandi."
+                next_step = "Gerekirse devam komutunu yazabilirsiniz."
+
+        elif parsed.action == "take_screenshot":
+            approval_required = True
+            approval_status = "approved" if request.approved else "pending"
+            if approval_status == "pending":
+                summary = "Ekran goruntusu alinacak. Onay gerekiyor."
+                next_step = "Ekran goruntusu almak icin islemi onaylayin."
+                result = {"status": "pending_approval"}
+            else:
+                result = take_screenshot()
+                summary = "Ekran goruntusu alindi."
+                next_step = "Dosya yolunu sonuc ekraninda gorebilirsiniz."
 
         elif parsed.action == "run_script":
             approval_required = True
@@ -262,11 +516,10 @@ def execute_command(request: CommandRequest) -> CommandResponse:
             result = {"items": items, "count": len(items)}
 
         elif parsed.action == "send_file":
-            items = search_files(
+            items, resolved_location = _search_with_fallback(
                 query=parsed.params.get("query", ""),
                 location=parsed.params.get("location", "desktop"),
                 extension=parsed.params.get("extension"),
-                allowed_folders=settings.allowed_folders,
             )
             if items:
                 recipient = parsed.params.get("recipient")
@@ -306,6 +559,7 @@ def execute_command(request: CommandRequest) -> CommandResponse:
                             "count": len(items),
                             "status": "sent",
                             "message": "Dosya bulundu ve gonderildi.",
+                            "resolved_location": resolved_location,
                         }
                 else:
                     summary = "Birden fazla dosya bulundu ancak alici maili belirtilmemis."
@@ -314,6 +568,7 @@ def execute_command(request: CommandRequest) -> CommandResponse:
                         "found_files": items[:5],
                         "count": len(items),
                         "message": "Dosyalar bulundu. Gonderim icin alici e-posta adresi gerekli.",
+                        "resolved_location": resolved_location,
                     }
             else:
                 summary = "Iletilmek istenen dosya mevcut degil."

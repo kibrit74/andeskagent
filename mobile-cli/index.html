@@ -2,40 +2,36 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Agentic CLI (Claude Code Style)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Agentic CLI</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="terminal-container">
-        <!-- Mac Style Header -->
         <div class="terminal-header">
-            <div class="window-controls">
+            <div class="window-controls" aria-hidden="true">
                 <span class="control close"></span>
                 <span class="control minimize"></span>
                 <span class="control maximize"></span>
             </div>
-            <div class="window-title">⚙️ Agentic Shell (Claude Code)</div>
-            <div class="window-spacer"></div>
+            <div class="window-title">Agentic Shell</div>
+            <div class="window-spacer" aria-hidden="true"></div>
         </div>
 
-        <!-- Terminal Output Area -->
         <div class="terminal-body" id="terminal-body">
             <div class="message system">
-                <span class="status-icon">🚀</span>
-                <span class="text">Agentic CLI v1.0 başlatıldı.</span>
+                <span class="status-icon">&gt;</span>
+                <span class="text">Agentic CLI v1.0 baslatildi.</span>
             </div>
             <div class="message system">
-                <span class="text" style="color: #6e7681;">İpuçları: Uygulama kurabilir, dosya oluşturabilir veya analiz isteyebilirsiniz.</span>
+                <span class="text subtle-text">Ipuclari: uygulama acma, dosya islemleri ve analiz komutlari yazabilirsiniz.</span>
             </div>
-            <!-- Dynamic content injected here -->
         </div>
 
-        <!-- Sticky Input Area -->
         <div class="terminal-input-wrapper">
-            <span class="prompt-icon">❯</span>
-            <input type="text" id="cli-input" class="cli-input" placeholder="Yapay zekaya komut verin..." autocomplete="off">
+            <span class="prompt-icon">&gt;</span>
+            <textarea id="cli-input" class="cli-input" placeholder="Yapay zekaya komut verin..." rows="1"></textarea>
         </div>
     </div>
     <script src="app.js"></script>
