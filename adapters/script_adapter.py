@@ -26,6 +26,7 @@ from core.workflows import WorkflowStep, execute_workflow
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST_PATH = BASE_DIR / "scripts" / "manifest.json"
+PROJECT_CONTEXT_PATH = BASE_DIR / ".teknikajan.md"
 FALLBACK_LOCATIONS = ("desktop", "documents", "downloads")
 
 
@@ -108,6 +109,14 @@ def _build_generation_prompt(
     forbidden_actions: Iterable[str],
 ) -> str:
     script_catalog = load_settings().allowed_scripts
+    project_context = ""
+    if PROJECT_CONTEXT_PATH.exists():
+        try:
+            content = PROJECT_CONTEXT_PATH.read_text(encoding="utf-8").strip()
+            if content:
+                project_context = content[:2000]
+        except OSError:
+            project_context = ""
     profile_guidance = {
         "file_chain": """
 Workflow profile: file_chain
@@ -143,6 +152,9 @@ Kullanicinin istegini mevcut yerel araclarla yerine getirecek bir PLAN uret.
 Amacin once en dar, en guvenli ve en deterministik tool planini secmektir.
 
 {profile_guidance}
+
+Proje baglami (.teknikajan.md):
+{project_context or "Yok"}
 
 Kurallar:
 - Markdown kullanma.

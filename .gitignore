@@ -12,3 +12,9 @@ logs/
 
 mobile-cli/out.txt
 *.log
+# Local secrets
+.env
+config/settings.json
+data/memory.json
+data/compact_notes.md
+.teknikajan.md

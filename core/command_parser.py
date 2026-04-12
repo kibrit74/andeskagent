@@ -17,6 +17,7 @@ from core.knowledge import KnowledgeService
 knowledge_service = KnowledgeService()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_CONTEXT_PATH = BASE_DIR / ".teknikajan.md"
 
 ALLOWED_ACTIONS = (
     "search_file",
@@ -326,6 +327,14 @@ def _build_prompt(text: str, settings: AppSettings) -> str:
     knowledge_block = knowledge_hint or "Yok"
     script_list = ", ".join(settings.allowed_scripts[:120]) or "Yok"
     script_catalog = knowledge_service.get_script_catalog_summary()
+    project_context = ""
+    if PROJECT_CONTEXT_PATH.exists():
+        try:
+            content = PROJECT_CONTEXT_PATH.read_text(encoding="utf-8").strip()
+            if content:
+                project_context = content[:2000]
+        except OSError:
+            project_context = ""
 
     return f"""
 Sen Windows uzaktan teknik destek ajani icin komut parser'sin.
@@ -425,6 +434,9 @@ Mevcut script katalogu:
 
 Bilgi tabani ipucu:
 {knowledge_block}
+
+Proje baglami (.teknikajan.md):
+{project_context or "Yok"}
 
 Ornekler:
 - "masaustumdeki pdf dosyalarini bul" -> {{"action":"search_file","params":{{"query":"","location":"desktop","extension":"pdf"}},"confidence":0.88}}
