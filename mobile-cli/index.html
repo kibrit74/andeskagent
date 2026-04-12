@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Agentic CLI</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -16,7 +16,22 @@
                 <span class="control maximize"></span>
             </div>
             <div class="window-title">Agentic Shell</div>
-            <div class="window-spacer" aria-hidden="true"></div>
+            <div class="header-actions">
+                <div class="theme-dots" aria-label="Tema Seçimi">
+                    <button class="theme-dot active" data-theme="default" style="background: #040609;" title="Varsayılan Tema"></button>
+                    <button class="theme-dot" data-theme="burgundy" style="background: #4e1331;" title="Bordo Tema"></button>
+                    <button class="theme-dot" data-theme="gold" style="background: #8a6924;" title="Altın Tema"></button>
+                </div>
+                <button id="screen-toggle" class="screen-toggle-btn" title="Canlı Ekran">📺</button>
+            </div>
+        </div>
+
+        <div id="screen-preview" class="screen-preview hidden">
+            <div class="screen-preview-header">
+                <span class="screen-live-badge">🔴 Canlı Ekran</span>
+                <button id="screen-close" class="screen-close-btn">✕</button>
+            </div>
+            <img id="screen-frame" class="screen-frame" alt="Ekran" />
         </div>
 
         <div class="terminal-body" id="terminal-body">
@@ -34,6 +49,6 @@
             <textarea id="cli-input" class="cli-input" placeholder="Yapay zekaya komut verin..." rows="1"></textarea>
         </div>
     </div>
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>

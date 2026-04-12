@@ -4,13 +4,17 @@ setlocal
 cd /d "%~dp0"
 
 set "PYTHON_CMD="
-where py >nul 2>nul
-if %errorlevel%==0 (
-    set "PYTHON_CMD=py -3"
+if exist ".venv\Scripts\python.exe" (
+    set "PYTHON_CMD=.venv\Scripts\python.exe"
 ) else (
-    where python >nul 2>nul
+    where py >nul 2>nul
     if %errorlevel%==0 (
-        set "PYTHON_CMD=python"
+        set "PYTHON_CMD=py -3"
+    ) else (
+        where python >nul 2>nul
+        if %errorlevel%==0 (
+            set "PYTHON_CMD=python"
+        )
     )
 )
 

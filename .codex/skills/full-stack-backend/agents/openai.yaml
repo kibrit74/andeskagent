@@ -1,0 +1,4 @@
+interface:
+  display_name: "Full Stack Backend"
+  short_description: "Build and modify backend application systems"
+  default_prompt: "Use $full-stack-backend to implement or review a backend change safely."

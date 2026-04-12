@@ -6,6 +6,7 @@ import getpass
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = BASE_DIR / "config" / "settings.json"
@@ -40,6 +41,9 @@ class AppSettings:
     playwright_mail_url: str = "https://mail.google.com/mail/u/0/#inbox"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
+    ai_provider: str = "gemini"
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openai/gpt-4o-mini"
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -72,6 +76,7 @@ def _load_manifest_script_names(path: Path | None = None) -> list[str]:
 
 
 def load_settings(config_path: Path | None = None) -> AppSettings:
+    load_dotenv(dotenv_path=BASE_DIR / ".env")
     config_path = config_path or DEFAULT_CONFIG_PATH
     raw = _expand(_load_json(config_path))
     whitelist = _expand(_load_json(DEFAULT_WHITELIST_PATH))
@@ -113,6 +118,9 @@ def load_settings(config_path: Path | None = None) -> AppSettings:
         playwright_mail_url=raw.get("playwright_mail_url", "https://mail.google.com/mail/u/0/#inbox"),
         gemini_api_key=raw.get("gemini_api_key", os.environ.get("GEMINI_API_KEY", "")),
         gemini_model=raw.get("gemini_model", os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")),
+        ai_provider=raw.get("ai_provider", os.environ.get("AI_PROVIDER", "gemini")),
+        openrouter_api_key=raw.get("openrouter_api_key", os.environ.get("OPENROUTER_API_KEY", "")),
+        openrouter_model=raw.get("openrouter_model", os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")),
     )
     settings.sqlite_path.parent.mkdir(parents=True, exist_ok=True)
     settings.log_path.parent.mkdir(parents=True, exist_ok=True)

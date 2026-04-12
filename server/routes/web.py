@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import socket
 import subprocess
 
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse, Response
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse, Response
 
 
 router = APIRouter(tags=["web"])
@@ -16,6 +17,29 @@ MOBILE_INDEX = MOBILE_DIR / "index.html"
 QR_SCRIPT = BASE_DIR / "scripts" / "render_qr.mjs"
 
 
+def _detect_lan_ip() -> str | None:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.connect(("8.8.8.8", 80))
+        address = sock.getsockname()[0]
+        return address if address and not address.startswith("127.") else None
+    except OSError:
+        return None
+    finally:
+        sock.close()
+
+
+def _public_base_url(request: Request) -> str:
+    current = request.url
+    host = current.hostname or "127.0.0.1"
+    port = current.port or (443 if current.scheme == "https" else 80)
+    if host in {"127.0.0.1", "localhost"}:
+        host = _detect_lan_ip() or host
+    default_port = 443 if current.scheme == "https" else 80
+    port_suffix = f":{port}" if port != default_port else ""
+    return f"{current.scheme}://{host}{port_suffix}"
+
+
 def _safe_mobile_path(asset_path: str) -> Path:
     candidate = (MOBILE_DIR / asset_path).resolve()
     if not str(candidate).startswith(str(MOBILE_DIR.resolve())) or not candidate.is_file():
@@ -24,8 +48,15 @@ def _safe_mobile_path(asset_path: str) -> Path:
 
 
 @router.get("/", include_in_schema=False)
-def home() -> FileResponse:
-    return FileResponse(ROOT_INDEX)
+def home(request: Request) -> HTMLResponse:
+    html = ROOT_INDEX.read_text(encoding="utf-8", errors="replace")
+    target_url = f"{_public_base_url(request)}/mobile-cli/"
+    replacement = f"const targetUrl = {target_url!r};"
+    html = html.replace(
+        "const targetUrl = new URL('/mobile-cli/', window.location.href).toString();",
+        replacement,
+    )
+    return HTMLResponse(content=html)
 
 
 @router.get("/mobile-cli", include_in_schema=False)

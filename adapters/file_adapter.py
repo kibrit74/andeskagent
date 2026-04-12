@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import zipfile
+import time
+import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 import shutil
 from typing import Iterable
@@ -32,10 +38,23 @@ class WhitelistFileAdapter:
         folder_hint: str | None = None,
         extensions: Iterable[str] | None = None,
         limit: int = 25,
+        max_seconds: float = 8.0,
     ) -> list[FileSearchResult]:
         query_lower = _normalize_text(query)
         extension_set = {ext.lower().lstrip(".") for ext in extensions or [] if ext}
         search_roots = self.allowed_roots
+        query_tokens = [
+            token
+            for token in re.split(r"[^a-z0-9]+", query_lower)
+            if token and (len(token) >= 3 or (len(token) >= 2 and any(ch.isdigit() for ch in token)))
+        ]
+
+        def _token_match(normalized_name: str) -> bool:
+            if not query_tokens:
+                return True
+            matched = sum(1 for token in query_tokens if token in normalized_name)
+            required = 1 if len(query_tokens) <= 2 else 2
+            return matched >= required
 
         if folder_hint:
             hinted = Path(folder_hint).expanduser().resolve()
@@ -43,30 +62,73 @@ class WhitelistFileAdapter:
                 search_roots = [hinted]
 
         results: list[FileSearchResult] = []
+        started_at = time.perf_counter()
+
+        def _within_budget() -> bool:
+            return (time.perf_counter() - started_at) <= max_seconds
+
+        def _add_result(path: Path) -> None:
+            try:
+                stat = path.stat()
+            except OSError:
+                return
+            results.append(
+                FileSearchResult(
+                    path=str(path),
+                    name=path.name,
+                    size_bytes=stat.st_size,
+                    modified_at=stat.st_mtime,
+                )
+            )
+
         for root in search_roots:
             if not root.exists():
                 continue
+            if not _within_budget():
+                break
+            # Fast pass: root + one level deep.
+            try:
+                for path in root.iterdir():
+                    if len(results) >= limit or not _within_budget():
+                        return sorted(results, key=lambda item: (item.modified_at, item.path), reverse=True)
+                    if path.is_file():
+                        normalized_name = _normalize_text(path.name)
+                        if query_lower and query_lower not in normalized_name and not _token_match(normalized_name):
+                            continue
+                        if extension_set and path.suffix.lower().lstrip(".") not in extension_set:
+                            continue
+                        _add_result(path)
+                    elif path.is_dir():
+                        for nested in path.iterdir():
+                            if len(results) >= limit or not _within_budget():
+                                return sorted(results, key=lambda item: (item.modified_at, item.path), reverse=True)
+                            if not nested.is_file():
+                                continue
+                            normalized_name = _normalize_text(nested.name)
+                            if query_lower and query_lower not in normalized_name and not _token_match(normalized_name):
+                                continue
+                            if extension_set and nested.suffix.lower().lstrip(".") not in extension_set:
+                                continue
+                            _add_result(nested)
+            except OSError:
+                pass
+
+            if len(results) >= limit or not _within_budget():
+                return sorted(results, key=lambda item: (item.modified_at, item.path), reverse=True)
+
             for path in root.rglob("*"):
                 if len(results) >= limit:
                     return sorted(results, key=lambda item: (item.modified_at, item.path), reverse=True)
+                if not _within_budget():
+                    return sorted(results, key=lambda item: (item.modified_at, item.path), reverse=True)
                 if not path.is_file():
                     continue
-                if query_lower and query_lower not in _normalize_text(path.name):
+                normalized_name = _normalize_text(path.name)
+                if query_lower and query_lower not in normalized_name and not _token_match(normalized_name):
                     continue
                 if extension_set and path.suffix.lower().lstrip(".") not in extension_set:
                     continue
-                try:
-                    stat = path.stat()
-                except OSError:
-                    continue
-                results.append(
-                    FileSearchResult(
-                        path=str(path),
-                        name=path.name,
-                        size_bytes=stat.st_size,
-                        modified_at=stat.st_mtime,
-                    )
-                )
+                _add_result(path)
 
         return sorted(results, key=lambda item: (item.modified_at, item.path), reverse=True)
 
@@ -233,6 +295,7 @@ def search_files(
         query,
         folder_hint=str(folder_hint) if folder_hint else None,
         extensions=[extension] if extension else None,
+        max_seconds=8.0,
     )
     return [
         {
@@ -443,4 +506,183 @@ def write_text_to_file(
         "modified_at": stat.st_mtime,
         "written_text": content,
         "append": append,
+    }
+
+
+def copy_files_to_path(
+    file_paths: list[str],
+    destination_path: str,
+    *,
+    allowed_folders: Iterable[str] | None = None,
+) -> list[dict[str, object]]:
+    """Birden fazla dosyayi belirtilen mutlak klasor yoluna kopyalar."""
+    roots = list(allowed_folders or load_settings().allowed_folders or build_default_roots())
+    adapter = WhitelistFileAdapter(roots)
+    dest = Path(destination_path).expanduser().resolve()
+
+    if not dest.exists() or not dest.is_dir():
+        raise ValueError(f"Hedef klasor bulunamadi: {dest}")
+    if not adapter._is_allowed(dest):
+        raise PermissionError(f"Hedef klasor izinli degil: {dest}")
+
+    results: list[dict[str, object]] = []
+    for fp in file_paths:
+        source = Path(fp).expanduser().resolve()
+        if not source.exists() or not source.is_file():
+            continue
+        if not adapter._is_allowed(source):
+            continue
+        copied = adapter.copy_file(str(source), str(dest))
+        results.append({
+            "path": copied.path,
+            "name": copied.name,
+            "size_bytes": copied.size_bytes,
+            "modified_at": copied.modified_at,
+        })
+    return results
+
+
+def move_files_to_path(
+    file_paths: list[str],
+    destination_path: str,
+    *,
+    allowed_folders: Iterable[str] | None = None,
+) -> list[dict[str, object]]:
+    """Birden fazla dosyayi belirtilen mutlak klasor yoluna tasir."""
+    roots = list(allowed_folders or load_settings().allowed_folders or build_default_roots())
+    adapter = WhitelistFileAdapter(roots)
+    dest = Path(destination_path).expanduser().resolve()
+
+    if not dest.exists() or not dest.is_dir():
+        raise ValueError(f"Hedef klasor bulunamadi: {dest}")
+    if not adapter._is_allowed(dest):
+        raise PermissionError(f"Hedef klasor izinli degil: {dest}")
+
+    results: list[dict[str, object]] = []
+    for fp in file_paths:
+        source = Path(fp).expanduser().resolve()
+        if not source.exists() or not source.is_file():
+            continue
+        if not adapter._is_allowed(source):
+            continue
+        moved = adapter.move_file(str(source), str(dest))
+        results.append({
+            "path": moved.path,
+            "name": moved.name,
+            "size_bytes": moved.size_bytes,
+            "modified_at": moved.modified_at,
+        })
+    return results
+
+
+def zip_directory(
+    directory_path: str,
+    output_name: str | None = None,
+    *,
+    allowed_folders: Iterable[str] | None = None,
+) -> dict[str, object]:
+    """Bir klasorun icerigini zip dosyasi olarak arsivler."""
+    roots = list(allowed_folders or load_settings().allowed_folders or build_default_roots())
+    adapter = WhitelistFileAdapter(roots)
+    source_dir = Path(directory_path).expanduser().resolve()
+
+    if not source_dir.exists() or not source_dir.is_dir():
+        raise ValueError(f"Kaynak klasor bulunamadi: {source_dir}")
+    if not adapter._is_allowed(source_dir):
+        raise PermissionError(f"Kaynak klasor izinli degil: {source_dir}")
+
+    safe_name = (output_name or source_dir.name).strip()
+    safe_name = "".join(c for c in safe_name if c not in '<>:"/\\|?*').strip() or "arsiv"
+    if not safe_name.lower().endswith(".zip"):
+        safe_name += ".zip"
+
+    zip_path = source_dir.parent / safe_name
+    counter = 1
+    while zip_path.exists():
+        stem = Path(safe_name).stem
+        zip_path = source_dir.parent / f"{stem} ({counter}).zip"
+        counter += 1
+
+    with zipfile.ZipFile(str(zip_path), "w", zipfile.ZIP_DEFLATED) as zf:
+        for item in sorted(source_dir.rglob("*")):
+            if item.is_file():
+                zf.write(str(item), item.relative_to(source_dir))
+
+    stat = zip_path.stat()
+    return {
+        "zip_path": str(zip_path),
+        "name": zip_path.name,
+        "size_bytes": stat.st_size,
+        "file_count": sum(1 for f in source_dir.rglob("*") if f.is_file()),
+        "source_directory": str(source_dir),
+    }
+
+
+def filter_files_by_date(
+    files: list[dict[str, object]],
+    *,
+    month: int | None = None,
+    year: int | None = None,
+) -> list[dict[str, object]]:
+    """Dosya listesini modified_at tarihine gore filtreler."""
+    filtered: list[dict[str, object]] = []
+    current_year = datetime.now().year
+
+    for item in files:
+        modified_at = item.get("modified_at")
+        if modified_at is None:
+            continue
+        try:
+            dt = datetime.fromtimestamp(float(modified_at))
+        except (ValueError, OSError, OverflowError):
+            continue
+
+        target_year = year or current_year
+        if dt.year != target_year:
+            continue
+        if month is not None and dt.month != month:
+            continue
+        filtered.append(item)
+
+    return filtered
+
+
+def open_file_path(
+    file_path: str,
+    *,
+    allowed_folders: Iterable[str] | None = None,
+) -> dict[str, object]:
+    roots = list(allowed_folders or load_settings().allowed_folders or build_default_roots())
+    adapter = WhitelistFileAdapter(roots)
+    target_file = Path(file_path).expanduser().resolve()
+
+    if not target_file.exists() or not target_file.is_file():
+        raise ValueError(f"Hedef dosya bulunamadi: {target_file}")
+    if not adapter._is_allowed(target_file):
+        raise PermissionError(f"Destination path is not allowed: {target_file}")
+
+    try:
+        os.startfile(str(target_file))  # type: ignore[attr-defined]
+    except AttributeError:
+        escaped_target = str(target_file).replace("'", "''")
+        completed = subprocess.run(
+            ["powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Start-Process -FilePath '{escaped_target}'"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(completed.stderr.strip() or completed.stdout.strip() or "Dosya acilamadi.")
+
+    stat = target_file.stat()
+    return {
+        "path": str(target_file),
+        "name": target_file.name,
+        "size_bytes": stat.st_size,
+        "modified_at": stat.st_mtime,
+        "opened": True,
+        "title_hint": target_file.stem[:80],
     }

@@ -5,7 +5,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 
-def configure_logging(log_path: Path, level: int = logging.INFO) -> logging.Logger:
+def configure_logging(log_path: Path, level: int = logging.DEBUG) -> logging.Logger:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger("teknikajan")
     logger.setLevel(level)

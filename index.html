@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Agentic CLI (Claude Code Style)</title>
-    <link rel="stylesheet" href="/mobile-cli/style.css">
+    <title>Agentic CLI</title>
+    <link rel="stylesheet" href="/mobile-cli/style.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         .desktop-qr-widget {
@@ -65,8 +65,14 @@
                 <span class="control minimize"></span>
                 <span class="control maximize"></span>
             </div>
-            <div class="window-title">⚙️ Agentic Shell (Claude Code)</div>
-            <div class="window-spacer"></div>
+            <div class="window-title">⚙️ Agentic Shell</div>
+            <div class="header-actions">
+                <div class="theme-dots" aria-label="Tema Seçimi">
+                    <button class="theme-dot active" data-theme="default" style="background: #040609;" title="Varsayılan Tema"></button>
+                    <button class="theme-dot" data-theme="burgundy" style="background: #4e1331;" title="Bordo Tema"></button>
+                    <button class="theme-dot" data-theme="gold" style="background: #8a6924;" title="Altın Tema"></button>
+                </div>
+            </div>
         </div>
 
         <!-- Terminal Output Area -->
@@ -84,7 +90,7 @@
         <!-- Sticky Input Area -->
         <div class="terminal-input-wrapper">
             <span class="prompt-icon">❯</span>
-            <input type="text" id="cli-input" class="cli-input" placeholder="Yapay zekaya komut verin..." autocomplete="off">
+            <textarea id="cli-input" class="cli-input" placeholder="Yapay zekaya komut verin..." rows="1" autocomplete="off"></textarea>
         </div>
     </div>
     
@@ -93,6 +99,6 @@
         const qrImage = document.getElementById('qr-image');
         qrImage.src = `/qr.svg?target=${encodeURIComponent(targetUrl)}`;
     </script>
-    <script src="/mobile-cli/app.js"></script>
+    <script src="/mobile-cli/app.js?v=2"></script>
 </body>
 </html>

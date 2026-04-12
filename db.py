@@ -68,6 +68,26 @@ def log_task(
         return int(cursor.lastrowid)
 
 
+def create_support_ticket(
+    db_path: Path,
+    *,
+    title: str,
+    description: str,
+    source_text: str = "",
+    metadata: dict[str, Any] | None = None,
+) -> int:
+    ticket_metadata = dict(metadata or {})
+    ticket_metadata.update({"title": title, "description": description})
+    return log_task(
+        db_path,
+        task_type="support_ticket",
+        status="open",
+        input_text=source_text,
+        output_text=description,
+        metadata=ticket_metadata,
+    )
+
+
 def update_task(
     db_path: Path,
     task_id: int,
@@ -159,4 +179,3 @@ def get_task(db_path: Path, task_id: int) -> TaskRecord | None:
         created_at=row[6],
         updated_at=row[7],
     )
-
