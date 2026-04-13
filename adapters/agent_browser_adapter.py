@@ -144,6 +144,11 @@ def open_agent_browser_session(
     target_url: str | None = None,
     user_data_dir: str | None = None,
 ) -> AgentBrowserSessionResult:
+    if target_url:
+        target_url = target_url.strip()
+        if not target_url.startswith(("http://", "https://", "file://", "about:", "chrome://")):
+            target_url = "https://" + target_url
+
     result = _WORKER.send(
         {
             "action": "open_session",
@@ -161,6 +166,10 @@ def navigate_agent_browser(
     session_id: str = "browser-main",
     user_data_dir: str | None = None,
 ) -> AgentBrowserSessionResult:
+    url = url.strip()
+    if not url.startswith(("http://", "https://", "file://", "about:", "chrome://")):
+        url = "https://" + url
+
     result = _WORKER.send(
         {
             "action": "navigate",

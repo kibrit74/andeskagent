@@ -13,6 +13,10 @@ class SessionState:
     plan_mode: bool = False
     model_provider: str | None = None
     model_name: str | None = None
+    current_agent: str | None = None
+    current_agent_profile: str | None = None
+    last_plan: dict[str, Any] | None = None
+    last_plan_text: str | None = None
     history: list[dict[str, Any]] = field(default_factory=list)
     usage: dict[str, Any] = field(default_factory=lambda: {"request_count": 0, "last_request_ms": 0.0})
 
@@ -61,4 +65,3 @@ def rewind_last(state: SessionState) -> dict[str, Any] | None:
     if not state.history:
         return None
     return state.history.pop()
-

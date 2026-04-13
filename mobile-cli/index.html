@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Agentic CLI</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=26">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -29,9 +29,18 @@
         <div id="screen-preview" class="screen-preview hidden">
             <div class="screen-preview-header">
                 <span class="screen-live-badge">🔴 Canlı Ekran</span>
-                <button id="screen-close" class="screen-close-btn">✕</button>
+                <div class="screen-preview-actions">
+                    <button id="screen-control-toggle" class="screen-control-btn" title="Tıklama Kontrolü">Kontrol: Kapalı</button>
+                    <button id="screen-click-mode" class="screen-control-btn" title="Tık Modu">Tık: Çift</button>
+                    <button id="screen-debug-toggle" class="screen-control-btn" title="Debug">Debug: Kapalı</button>
+                    <button id="screen-fullscreen-toggle" class="screen-control-btn" title="Tam Ekran">Tam Ekran</button>
+                    <button id="screen-close" class="screen-close-btn">✕</button>
+                </div>
             </div>
             <img id="screen-frame" class="screen-frame" alt="Ekran" />
+            <canvas id="screen-canvas" class="screen-canvas" width="0" height="0"></canvas>
+            <canvas id="screen-debug-canvas" class="screen-canvas debug-canvas" width="0" height="0"></canvas>
+            <div id="screen-click-layer" class="screen-click-layer" aria-hidden="true"></div>
         </div>
 
         <div class="terminal-body" id="terminal-body">
@@ -49,6 +58,7 @@
             <textarea id="cli-input" class="cli-input" placeholder="Yapay zekaya komut verin..." rows="1"></textarea>
         </div>
     </div>
-    <script src="app.js?v=3"></script>
+    <div id="screen-global-blocker" class="screen-global-blocker" aria-hidden="true"></div>
+    <script src="app.js?v=26"></script>
 </body>
 </html>

@@ -35,31 +35,31 @@ $scriptDefs = New-Object System.Collections.Generic.List[object]
 $existing = @(
     [pscustomobject]@{
         name = "outlook_repair"
-        path = "scripts/windows/outlook_repair.bat"
+        path = "scripts/windows/outlook_repair.ps1"
         description = "Outlook icin temel onarim akisi"
         aliases = @("outlook onar", "outlook duzelt", "outlook tamir et")
     },
     [pscustomobject]@{
         name = "dns_flush"
-        path = "scripts/windows/dns_flush.bat"
+        path = "scripts/windows/dns_flush.ps1"
         description = "DNS cache temizleme"
         aliases = @("dns temizle", "dns flush", "dns onbellegini temizle")
     },
     [pscustomobject]@{
         name = "clear_temp"
-        path = "scripts/windows/clear_temp.bat"
+        path = "scripts/windows/clear_temp.ps1"
         description = "Temp klasorlerini temizleme"
         aliases = @("temp temizle", "gecici dosyalari temizle", "temp dosyalarini temizle")
     },
     [pscustomobject]@{
         name = "office_repair"
-        path = "scripts/windows/office_repair.bat"
+        path = "scripts/windows/office_repair.ps1"
         description = "Office onarim akisi"
         aliases = @("office onar", "office duzelt", "office tamir et")
     },
     [pscustomobject]@{
         name = "restart_service"
-        path = "scripts/windows/restart_service.bat"
+        path = "scripts/windows/restart_service.ps1"
         description = "Servis yeniden baslatma"
         aliases = @("servisi yeniden baslat", "service restart", "servis restart")
     }
@@ -223,15 +223,15 @@ if ($scriptDefs.Count -ne 75) {
 $catalogJson = $scriptDefs | ConvertTo-Json -Depth 8
 Set-Content -LiteralPath $catalogPath -Value $catalogJson -Encoding UTF8
 
-Get-ChildItem -LiteralPath $libraryDir -Filter *.bat -File | Remove-Item -Force
+Get-ChildItem -LiteralPath $libraryDir -Filter *.ps1 -File | Remove-Item -Force
 foreach ($def in $scriptDefs) {
-    $batPath = Join-Path $libraryDir ($def.name + ".bat")
+    $ps1Path = Join-Path $libraryDir ($def.name + ".ps1")
 @"
-@echo off
-setlocal
-powershell -ExecutionPolicy Bypass -File "%~dp0..\run-library-script.ps1" -ScriptName "$($def.name)"
-exit /b %ERRORLEVEL%
-"@ | Set-Content -LiteralPath $batPath -Encoding ASCII
+`$ErrorActionPreference = 'Stop'
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$runner = Join-Path `$(Split-Path -Parent `$scriptRoot) 'run-library-script.ps1'
+powershell -ExecutionPolicy Bypass -File `$runner -ScriptName "$($def.name)"
+"@ | Set-Content -LiteralPath $ps1Path -Encoding UTF8
 }
 
 $manifestEntries = New-Object System.Collections.Generic.List[object]
@@ -241,7 +241,7 @@ foreach ($item in $existing) {
 foreach ($def in $scriptDefs) {
     $manifestEntries.Add([pscustomobject]@{
         name = $def.name
-        path = "scripts/windows/library/$($def.name).bat"
+        path = "scripts/windows/library/$($def.name).ps1"
         description = $def.description
         aliases = $def.aliases
     })

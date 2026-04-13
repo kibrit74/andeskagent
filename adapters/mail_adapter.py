@@ -23,8 +23,8 @@ class BrowserMailAdapter:
     def __init__(
         self,
         *,
-        browser_channel: str = "msedge",
-        user_data_dir: str = "data/playwright-edge-profile",
+        browser_channel: str = "chromium",
+        user_data_dir: str = "data/playwright-chromium-profile",
         mail_url: str = "https://mail.google.com/mail/u/0/#inbox",
         headless: bool = False,
         allowed_recipients: Iterable[str] | None = None,

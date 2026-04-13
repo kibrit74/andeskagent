@@ -361,6 +361,7 @@ def click_ui(
     x: int | None = None,
     y: int | None = None,
     button: str = "left",
+    double_click: bool = False,
     text: str | None = None,
     title_contains: str | None = None,
     process_name: str | None = None,
@@ -370,26 +371,86 @@ def click_ui(
         raise ValueError("click_ui sadece left veya right button destekler.")
 
     if x is not None and y is not None:
-        down_up = "0x0002; 0x0004" if normalized_button == "left" else "0x0008; 0x0010"
+        down_flag = "0x0002" if normalized_button == "left" else "0x0008"
+        up_flag = "0x0004" if normalized_button == "left" else "0x0010"
+        click_times = 2 if double_click else 1
         command = f"""
 $def = @"
 using System;
 using System.Runtime.InteropServices;
 public class MouseCore {{
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
-    [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, IntPtr dwExtraInfo);
+    [DllImport("user32.dll")] public static extern int GetSystemMetrics(int nIndex);
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT {{
+        public uint type;
+        public MOUSEINPUT mi;
+    }}
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT {{
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }}
+    [DllImport("user32.dll", SetLastError=true)]
+    public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 }}
 "@
-Add-Type -TypeDefinition $def
-[MouseCore]::SetCursorPos({int(x)}, {int(y)}) | Out-Null
-[MouseCore]::mouse_event({down_up.split(';')[0].strip()}, 0, 0, 0, [IntPtr]::Zero)
-[MouseCore]::mouse_event({down_up.split(';')[1].strip()}, 0, 0, 0, [IntPtr]::Zero)
+if (-not ("MouseCore" -as [type])) {{
+    Add-Type -TypeDefinition $def
+}}
+$vx = [MouseCore]::GetSystemMetrics(76)
+$vy = [MouseCore]::GetSystemMetrics(77)
+$vw = [MouseCore]::GetSystemMetrics(78)
+$vh = [MouseCore]::GetSystemMetrics(79)
+$absX = {int(x)}
+$absY = {int(y)}
+$denomW = [Math]::Max(1, $vw - 1)
+$denomH = [Math]::Max(1, $vh - 1)
+$normX = [int](($absX - $vx) * 65535 / $denomW)
+$normY = [int](($absY - $vy) * 65535 / $denomH)
+$moveInput = New-Object MouseCore+INPUT
+$moveInput.type = 0
+$moveInput.mi = New-Object MouseCore+MOUSEINPUT
+$moveInput.mi.dx = $normX
+$moveInput.mi.dy = $normY
+$moveInput.mi.dwFlags = 0x0001 + 0x8000
+[MouseCore]::SendInput(1, @($moveInput), [System.Runtime.InteropServices.Marshal]::SizeOf([type]::GetType("MouseCore+INPUT"))) | Out-Null
+for ($i = 0; $i -lt {click_times}; $i++) {{
+    $inputDown = New-Object MouseCore+INPUT
+    $inputDown.type = 0
+    $inputDown.mi = New-Object MouseCore+MOUSEINPUT
+    $inputDown.mi.dx = $normX
+    $inputDown.mi.dy = $normY
+    $inputDown.mi.dwFlags = {down_flag} + 0x8000
+
+    $inputUp = New-Object MouseCore+INPUT
+    $inputUp.type = 0
+    $inputUp.mi = New-Object MouseCore+MOUSEINPUT
+    $inputUp.mi.dx = $normX
+    $inputUp.mi.dy = $normY
+    $inputUp.mi.dwFlags = {up_flag} + 0x8000
+
+    [MouseCore]::SendInput(1, @($inputDown), [System.Runtime.InteropServices.Marshal]::SizeOf([type]::GetType("MouseCore+INPUT"))) | Out-Null
+    [MouseCore]::SendInput(1, @($inputUp), [System.Runtime.InteropServices.Marshal]::SizeOf([type]::GetType("MouseCore+INPUT"))) | Out-Null
+    Start-Sleep -Milliseconds 80
+}}
 [pscustomobject]@{{
     mode = 'coordinates'
-    x = {int(x)}
-    y = {int(y)}
+    x = $absX
+    y = $absY
     button = '{normalized_button}'
+    double_click = {str(bool(double_click)).ToLower()}
     clicked = $true
+    virtual_x = $vx
+    virtual_y = $vy
+    virtual_width = $vw
+    virtual_height = $vh
+    norm_x = $normX
+    norm_y = $normY
 }} | ConvertTo-Json -Depth 3
 """.strip()
         completed = _run_powershell(command)
@@ -426,7 +487,9 @@ public class MouseCore {{
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 }}
 "@
-Add-Type -TypeDefinition $def
+if (-not ("MouseCore" -as [type])) {{
+    Add-Type -TypeDefinition $def
+}}
 $titleFilter = '{title_filter}'
 $processFilter = '{process_filter}'
 $textFilter = '{text_filter}'

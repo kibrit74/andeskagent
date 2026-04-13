@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Agentic CLI</title>
-    <link rel="stylesheet" href="/mobile-cli/style.css?v=2">
+    <link rel="stylesheet" href="/mobile-cli/style.css?v=26">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         .desktop-qr-widget {
@@ -55,6 +55,7 @@
         <img id="qr-image" alt="Mobil CLI Barkod" />
         <div class="qr-text">Mobil CLI için barkodu tarayın</div>
     </div>
+    <div id="screen-global-blocker" class="screen-global-blocker" aria-hidden="true"></div>
 
     <!-- Orijinal Terminal Arayüzü -->
     <div class="terminal-container">
@@ -72,7 +73,25 @@
                     <button class="theme-dot" data-theme="burgundy" style="background: #4e1331;" title="Bordo Tema"></button>
                     <button class="theme-dot" data-theme="gold" style="background: #8a6924;" title="Altın Tema"></button>
                 </div>
+                <button id="screen-toggle" class="screen-toggle-btn" title="Canlı Ekran">📺</button>
             </div>
+        </div>
+
+        <div id="screen-preview" class="screen-preview hidden">
+            <div class="screen-preview-header">
+                <span class="screen-live-badge">🔴 Canlı Ekran</span>
+                <div class="screen-preview-actions">
+                    <button id="screen-control-toggle" class="screen-control-btn" title="Tıklama Kontrolü">Kontrol: Kapalı</button>
+                    <button id="screen-click-mode" class="screen-control-btn" title="Tık Modu">Tık: Çift</button>
+                    <button id="screen-debug-toggle" class="screen-control-btn" title="Debug">Debug: Kapalı</button>
+                    <button id="screen-fullscreen-toggle" class="screen-control-btn" title="Tam Ekran">Tam Ekran</button>
+                    <button id="screen-close" class="screen-close-btn">✕</button>
+                </div>
+            </div>
+            <img id="screen-frame" class="screen-frame" alt="Ekran" />
+            <canvas id="screen-canvas" class="screen-canvas" width="0" height="0"></canvas>
+            <canvas id="screen-debug-canvas" class="screen-canvas debug-canvas" width="0" height="0"></canvas>
+            <div id="screen-click-layer" class="screen-click-layer" aria-hidden="true"></div>
         </div>
 
         <!-- Terminal Output Area -->
@@ -95,10 +114,11 @@
     </div>
     
     <script>
-        const targetUrl = new URL('/mobile-cli/', window.location.href).toString();
+        const tokenParam = new URLSearchParams(window.location.search).get('token') || '';
+        const targetUrl = new URL('/mobile-cli/' + (tokenParam ? `?token=${encodeURIComponent(tokenParam)}` : ''), window.location.href).toString();
         const qrImage = document.getElementById('qr-image');
         qrImage.src = `/qr.svg?target=${encodeURIComponent(targetUrl)}`;
     </script>
-    <script src="/mobile-cli/app.js?v=2"></script>
+    <script src="/mobile-cli/app.js?v=26"></script>
 </body>
 </html>

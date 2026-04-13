@@ -163,17 +163,23 @@ def _classify_agent_browser_intent(text: str) -> str | None:
     if re.search(r"\bhttps?://", text, flags=re.IGNORECASE):
         return "navigate_agent_browser"
 
+    if any(token in normalized for token in ("tarayici ac", "tarayiciyi ac", "browser ac", "browseri ac")):
+        if not any(token in normalized for token in (" git", "adres", "gmail", "takvim", "calendar", "site", "url", "link")):
+            return "open_agent_browser"
+
     site_navigation_phrases = (
         "siteye git",
         "siteyi ac",
         "web sitesini ac",
         "adrese git",
+        "adresine git",
         "url ac",
         "linki ac",
         "gmail'e git",
         "gmail e git",
         "gmaili ac",
         "gmail ac",
+        "gmail adresine git",
         "takvime git",
         "takvimi ac",
         "calendar ac",
@@ -348,6 +354,7 @@ Kurallar:
 - MCP, plugin, remote tool, harici ajan veya baska bir orkestrator dogrudan mevcut DEGIL. Kullanici bunlari istese bile yalnizca mevcut actionlardan biriyle ifade edebiliyorsan ifade et; edemiyorsan unknown don.
 - Script secimi icin kural: Eger istek {script_list} listesindeki bir script tarafindan TAM ve DOGRUDAN karsilanmiyorsa run_script kullanma.
 - forbidden_actions listesi: {", ".join(settings.forbidden_actions)}
+- Dis bilgi / web aramasi / internet kaynakli dogrulama gerektiren isteklerde unknown don. Bu sistemde web aramasi yok.
 - Karmasik veya dinamik islerde, OS komutlarinda, ekleme/silme/kontrol gibi mantiksal durumlarda action="unknown" don. Boylece planner asamasi tool-first cozum uretebilir.
 - Excel/Word/Outlook gibi Office uygulamalarinda icerik yazma, hucre doldurma, calisma kitabi duzenleme, kaydetme gibi cok adimli belge/uygulama ici islemlerde type_ui yerine action="unknown" don.
 - Gmail/Takvim/siteye git/PDF dokumani ac/PDF deki linke tikla gibi browser veya belge goruntuleyici odakli istekler agent_browser workflow'una aittir.
@@ -394,7 +401,7 @@ Action anlami:
 - read_screen: ekran durumunu toplama
 - take_screenshot: ekran goruntusu alma
 - create_ticket: destek bileti olusturma
-- run_script: hazir bat/ps scriptlerini calistirma
+- run_script: hazir PowerShell (ps1) scriptlerini calistirma
 - system_status: sistem durumu isteme
 - list_scripts: kullanilabilir scriptleri listeleme
 - unknown: guvenli ayrisamayan veya yasakli istek
@@ -421,7 +428,7 @@ Parametre kurallari:
 - type_ui icin params icinde text_to_type (yazilacak metin) ve opsiyonel text_filter (hedef alanin ekrandaki adi) kullan.
 - verify_ui_state icin params icinde opsiyonel expected_text kullan.
 - create_ticket icin params icinde title ve opsiyonel description kullan.
-- run_script icin params icinde script_name veya script_names kullan.
+- run_script icin params icinde script_name veya script_names kullan. (BAT/CMD kullanma, sadece PS1)
 - system_status ve list_scripts ve list_windows ve read_screen ve take_screenshot icin params bos olabilir.
 - extension alaninda nokta kullanma. Ornek: xlsx
 - location veya destination_location belirtilmediyse desktop kullan.
@@ -858,6 +865,15 @@ def _fallback_parse(text: str) -> ParsedCommand:
                 knowledge_hint=knowledge_hint,
             )
 
+    if agent_browser_intent in {"navigate_agent_browser", "open_agent_browser", "reuse_agent_browser_session"}:
+        return ParsedCommand(
+            action=agent_browser_intent,
+            params={},
+            confidence=0.86,
+            knowledge_hint=knowledge_hint,
+            workflow_profile=workflow_profile,
+        )
+
     if any(
         phrase in normalized
         for phrase in (
@@ -1090,14 +1106,6 @@ def parse_command(text: str, settings: AppSettings | None = None) -> ParsedComma
         )
     active_settings = settings or load_settings()
     fallback_candidate = _fallback_parse(text)
-    if fallback_candidate.action != "unknown" and fallback_candidate.confidence >= 0.85:
-        return ParsedCommand(
-            action=fallback_candidate.action,
-            params=fallback_candidate.params,
-            confidence=fallback_candidate.confidence,
-            knowledge_hint=fallback_candidate.knowledge_hint,
-            workflow_profile=fallback_candidate.workflow_profile or workflow_profile,
-        )
     agent_browser_intent = _classify_agent_browser_intent(text)
     if active_settings.ai_provider == "openrouter" and not active_settings.openrouter_api_key:
         return fallback_candidate
@@ -1126,6 +1134,13 @@ def parse_command(text: str, settings: AppSettings | None = None) -> ParsedComma
     if agent_browser_intent == "click_pdf_link" and action in {"click_ui", "unknown", "search_file"}:
         action = "click_pdf_link"
         params = _sanitize_params(action, fallback_candidate.params or {}, text)
+    elif agent_browser_intent in {"navigate_agent_browser", "open_agent_browser", "reuse_agent_browser_session"} and action in {
+        "search_file",
+        "open_file",
+        "unknown",
+    }:
+        action = agent_browser_intent
+        params = _sanitize_params(action, fallback_candidate.params or {}, text)
     elif (
         action == "search_file"
         and (agent_browser_intent == "open_document_in_agent_browser" or ("pdf" in normalized_text and " ac" in normalized_text))
@@ -1133,6 +1148,8 @@ def parse_command(text: str, settings: AppSettings | None = None) -> ParsedComma
         action = "open_document_in_agent_browser"
         params = _sanitize_params(action, fallback_candidate.params or {}, text)
     if action == "unknown" or (action == "run_script" and not (params.get("script_name") or params.get("script_names"))):
+        return fallback_candidate
+    if float(payload.confidence) < 0.6:
         return fallback_candidate
 
     return ParsedCommand(

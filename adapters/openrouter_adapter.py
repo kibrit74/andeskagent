@@ -81,30 +81,42 @@ def _parse_json_content(content: str) -> dict[str, Any]:
 
 def _generate_with_retry(*, api_key: str, model: str, prompt: str, timeout_seconds: int) -> dict[str, Any]:
     try:
-        from openai import OpenAI
-        from openai import APIConnectionError, APITimeoutError, APIError, RateLimitError
+        import httpx
     except ImportError as exc:
-        raise RuntimeError("OpenAI SDK kurulu degil. `pip install openai` calistirin.") from exc
+        raise RuntimeError("httpx kurulu degil. `pip install httpx` calistirin.") from exc
 
-    client = OpenAI(api_key=api_key, base_url=OPENROUTER_BASE_URL)
+    cleaned_key = api_key.strip()
+    if not cleaned_key.startswith("sk-or-"):
+        raise RuntimeError("OPENROUTER_API_KEY gecersiz. Anahtar 'sk-or-' ile baslamali.")
     last_exc: Exception | None = None
 
     for attempt_index in range(len(TRANSIENT_RETRY_DELAYS) + 1):
         try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=_build_messages(prompt),
-                temperature=0,
+            payload = {
+                "model": model,
+                "messages": _build_messages(prompt),
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+            }
+            response = httpx.post(
+                f"{OPENROUTER_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {cleaned_key}",
+                    "HTTP-Referer": "http://localhost",
+                    "X-Title": "teknikajan",
+                },
+                json=payload,
                 timeout=timeout_seconds,
-                response_format={"type": "json_object"},
             )
-            content = response.choices[0].message.content if response.choices else ""
+            if response.status_code >= 400:
+                raise RuntimeError(f"Error code: {response.status_code} - {response.text}")
+            data = response.json()
+            content = (
+                data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                if isinstance(data, dict)
+                else ""
+            )
             return _parse_json_content(content)
-        except (RateLimitError, APIConnectionError, APITimeoutError, APIError) as exc:
-            last_exc = exc
-            if not _is_transient_openrouter_error(str(exc)) or attempt_index >= len(TRANSIENT_RETRY_DELAYS):
-                break
-            time.sleep(TRANSIENT_RETRY_DELAYS[attempt_index])
         except Exception as exc:
             last_exc = exc
             if not _is_transient_openrouter_error(str(exc)) or attempt_index >= len(TRANSIENT_RETRY_DELAYS):
@@ -116,7 +128,7 @@ def _generate_with_retry(*, api_key: str, model: str, prompt: str, timeout_secon
 
 
 def parse_command_with_openrouter(*, api_key: str, model: str, prompt: str) -> AgentCommandPayload:
-    if not api_key:
+    if not api_key or not api_key.strip():
         raise RuntimeError("OpenRouter API anahtari ayarlanmamis. OPENROUTER_API_KEY kullanin.")
     payload = _generate_with_retry(
         api_key=api_key,
@@ -128,7 +140,7 @@ def parse_command_with_openrouter(*, api_key: str, model: str, prompt: str) -> A
 
 
 def generate_powershell_script_with_openrouter(*, api_key: str, model: str, prompt: str) -> dict[str, Any]:
-    if not api_key:
+    if not api_key or not api_key.strip():
         raise RuntimeError("OpenRouter API anahtari ayarlanmamis. OPENROUTER_API_KEY kullanin.")
     return _generate_with_retry(
         api_key=api_key,

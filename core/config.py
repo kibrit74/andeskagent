@@ -35,8 +35,8 @@ class AppSettings:
     smtp_use_tls: bool = True
     default_mail_from: str = ""
     mail_transport: str = "playwright"
-    playwright_browser_channel: str = "msedge"
-    playwright_user_data_dir: str = "data/playwright-edge-profile"
+    playwright_browser_channel: str = "chromium"
+    playwright_user_data_dir: str = "data/playwright-chromium-profile"
     playwright_headless: bool = False
     playwright_mail_url: str = "https://mail.google.com/mail/u/0/#inbox"
     gemini_api_key: str = ""
@@ -76,7 +76,7 @@ def _load_manifest_script_names(path: Path | None = None) -> list[str]:
 
 
 def load_settings(config_path: Path | None = None) -> AppSettings:
-    load_dotenv(dotenv_path=BASE_DIR / ".env")
+    load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)
     config_path = config_path or DEFAULT_CONFIG_PATH
     raw = _expand(_load_json(config_path))
     whitelist = _expand(_load_json(DEFAULT_WHITELIST_PATH))
@@ -93,6 +93,12 @@ def load_settings(config_path: Path | None = None) -> AppSettings:
             ]
         )
     )
+
+    env_ai_provider = os.environ.get("AI_PROVIDER", "")
+    env_gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    env_gemini_model = os.environ.get("GEMINI_MODEL", "")
+    env_openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
+    env_openrouter_model = os.environ.get("OPENROUTER_MODEL", "")
 
     settings = AppSettings(
         api_host=raw.get("api_host", AppSettings.api_host),
@@ -116,12 +122,14 @@ def load_settings(config_path: Path | None = None) -> AppSettings:
         playwright_user_data_dir=raw.get("playwright_user_data_dir", "data/playwright-edge-profile"),
         playwright_headless=bool(raw.get("playwright_headless", False)),
         playwright_mail_url=raw.get("playwright_mail_url", "https://mail.google.com/mail/u/0/#inbox"),
-        gemini_api_key=raw.get("gemini_api_key", os.environ.get("GEMINI_API_KEY", "")),
-        gemini_model=raw.get("gemini_model", os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")),
-        ai_provider=raw.get("ai_provider", os.environ.get("AI_PROVIDER", "gemini")),
-        openrouter_api_key=raw.get("openrouter_api_key", os.environ.get("OPENROUTER_API_KEY", "")),
-        openrouter_model=raw.get("openrouter_model", os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")),
+        gemini_api_key=env_gemini_key or raw.get("gemini_api_key", ""),
+        gemini_model=env_gemini_model or raw.get("gemini_model", "gemini-2.0-flash"),
+        ai_provider=env_ai_provider or raw.get("ai_provider", "gemini"),
+        openrouter_api_key=env_openrouter_key or raw.get("openrouter_api_key", ""),
+        openrouter_model=env_openrouter_model or raw.get("openrouter_model", "openai/gpt-4o-mini"),
     )
+    if env_openrouter_key and not env_ai_provider:
+        settings.ai_provider = "openrouter"
     settings.sqlite_path.parent.mkdir(parents=True, exist_ok=True)
     settings.log_path.parent.mkdir(parents=True, exist_ok=True)
     return settings

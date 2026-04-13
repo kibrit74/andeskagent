@@ -17,6 +17,7 @@ from server.routes.scripts import router as scripts_router
 from server.routes.system import router as system_router
 from server.routes.web import router as web_router
 from server.routes.screen_stream import router as screen_stream_router
+from server.routes.screen_control import router as screen_control_router
 
 
 @asynccontextmanager
@@ -66,6 +67,7 @@ app.include_router(scripts_router)
 app.include_router(command_router)
 app.include_router(command_ui_router)
 app.include_router(screen_stream_router)
+app.include_router(screen_control_router)
 
 
 @app.get("/health", tags=["system"])

@@ -33,6 +33,12 @@ def list_memory(*, tenant_id: str | None, session_id: str) -> dict[str, Any]:
     return payload.get(_scope_key(tenant_id, session_id), {})
 
 
+def get_memory_value(*, tenant_id: str | None, session_id: str, key: str) -> Any | None:
+    payload = _load_all()
+    scope = _scope_key(tenant_id, session_id)
+    return payload.get(scope, {}).get(key)
+
+
 def set_memory(*, tenant_id: str | None, session_id: str, key: str, value: Any) -> dict[str, Any]:
     payload = _load_all()
     scope = _scope_key(tenant_id, session_id)
@@ -52,4 +58,3 @@ def delete_memory(*, tenant_id: str | None, session_id: str, key: str) -> dict[s
         payload[scope] = scope_data
         _save_all(payload)
     return scope_data
-

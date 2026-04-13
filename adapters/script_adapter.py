@@ -23,6 +23,7 @@ from adapters.mail_adapter import send_email_with_attachment
 from adapters.system_adapter import get_system_status
 from core.config import load_settings
 from core.workflows import WorkflowStep, execute_workflow
+from adapters.powershell_worker import run_powershell_command
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST_PATH = BASE_DIR / "scripts" / "manifest.json"
@@ -163,6 +164,7 @@ Kurallar:
 - steps bir dizi olsun.
 - Her step bir object olsun ve alanlari: tool, args
 - summary kisa ama kesin olsun.
+- Dis bilgi / web aramasi / internet kaynakli dogrulama gerektiren isteklerde calisacak tool yok. Bu durumda summary ile net soru sor ve steps bos dizi don.
 - Desteklenen tool degerleri:
   - get_system_status
   - search_files
@@ -386,25 +388,30 @@ def _run_powershell_script(script: str, *, summary: str) -> dict[str, object]:
     out_fd, out_path = tempfile.mkstemp(suffix=".out")
     err_fd, err_path = tempfile.mkstemp(suffix=".err")
     try:
-        with os.fdopen(out_fd, "w", encoding="utf-8") as out_f, os.fdopen(err_fd, "w", encoding="utf-8") as err_f:
-            try:
-                completed = subprocess.run(
-                    ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(script_path)],
-                    stdout=out_f,
-                    stderr=err_f,
-                    timeout=120,
-                    check=False,
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                )
-                ret_code = completed.returncode
-            except subprocess.TimeoutExpired as exc:
-                raise RuntimeError(
-                    f"Generated script timed out after {int(exc.timeout or 120)} seconds."
-                ) from exc
-        with open(out_path, "r", encoding="utf-8", errors="replace") as f:
-            stdout_text = f.read().strip()
-        with open(err_path, "r", encoding="utf-8", errors="replace") as f:
-            stderr_text = f.read().strip()
+        try:
+            stdout_text = run_powershell_command(f"& '{str(script_path)}'", timeout_seconds=120)
+            stderr_text = ""
+            ret_code = 0
+        except Exception:
+            with os.fdopen(out_fd, "w", encoding="utf-8") as out_f, os.fdopen(err_fd, "w", encoding="utf-8") as err_f:
+                try:
+                    completed = subprocess.run(
+                        ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(script_path)],
+                        stdout=out_f,
+                        stderr=err_f,
+                        timeout=120,
+                        check=False,
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                    )
+                    ret_code = completed.returncode
+                except subprocess.TimeoutExpired as exc:
+                    raise RuntimeError(
+                        f"Generated script timed out after {int(exc.timeout or 120)} seconds."
+                    ) from exc
+            with open(out_path, "r", encoding="utf-8", errors="replace") as f:
+                stdout_text = f.read().strip()
+            with open(err_path, "r", encoding="utf-8", errors="replace") as f:
+                stderr_text = f.read().strip()
     finally:
         try: os.remove(out_path)
         except Exception: pass

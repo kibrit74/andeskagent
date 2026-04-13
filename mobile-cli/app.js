@@ -7,6 +7,12 @@ let commandHistory = [];
 let historyIndex = -1;
 let currentInputCache = '';
 
+const urlParams = new URLSearchParams(window.location.search);
+const bearerTokenFromUrl = urlParams.get('token');
+if (bearerTokenFromUrl) {
+    localStorage.setItem('bearer_token', bearerTokenFromUrl.trim());
+}
+
 const inputWrapper = document.querySelector('.terminal-input-wrapper');
 let slashMenu = document.createElement('div');
 slashMenu.className = 'slash-menu';
@@ -16,7 +22,16 @@ const slashCommands = [
     { cmd: '/temizle', icon: '🧹', desc: 'Ekranı temizler' },
     { cmd: '/iptal', icon: '✖', desc: 'Son işlemi iptal eder' },
     { cmd: '/durum', icon: '📊', desc: 'Sistem durumunu raporlar' },
-    { cmd: '/yardim', icon: '❓', desc: 'Yardım ve komut listesi' }
+    { cmd: '/yardim', icon: '❓', desc: 'Yardım ve komut listesi' },
+    { cmd: '/init', icon: '🧭', desc: 'Proje bağlamı dosyası oluşturur' },
+    { cmd: '/memory', icon: '🧠', desc: 'Hafıza yönetimi (list/ekle/sil)' },
+    { cmd: '/model', icon: '🧩', desc: 'Model sağlayıcı/model seçimi' },
+    { cmd: '/plan', icon: '🧪', desc: 'Plan modu aç/kapat' },
+    { cmd: '/compact', icon: '🗜️', desc: 'Oturum özetini kaydeder' },
+    { cmd: '/usage', icon: '💸', desc: 'Kullanım bilgisi' },
+    { cmd: '/rewind', icon: '⏪', desc: 'Son kayıt geri al' },
+    { cmd: '/audit', icon: '📄', desc: 'Oturum audit raporu' },
+    { cmd: '/agent', icon: '🤖', desc: 'Agent profili seç/listele' }
 ];
 
 let slashSelectedIndex = 0;
@@ -29,7 +44,18 @@ function renderSlashMenu(filter = '') {
         slashMenu.classList.remove('active');
         return;
     }
-    
+
+    const wrapperRect = inputWrapper.getBoundingClientRect();
+    const left = Math.max(8, wrapperRect.left + 20);
+    const top = wrapperRect.bottom + 12;
+    const availableHeight = Math.max(160, window.innerHeight - top - 16);
+    const width = Math.min(wrapperRect.width - 40, 360);
+    slashMenu.style.position = 'fixed';
+    slashMenu.style.left = `${left}px`;
+    slashMenu.style.top = `${top}px`;
+    slashMenu.style.width = `${width}px`;
+    slashMenu.style.maxHeight = `${Math.min(420, availableHeight)}px`;
+
     slashMenu.classList.add('active');
     slashMenu.innerHTML = '';
     
@@ -59,8 +85,34 @@ function renderSlashMenu(filter = '') {
     });
 }
 
+function renderHelpCommands() {
+    return `
+        <div class="result-section">
+            <div class="result-title-container">
+                <div class="result-title">Komut Listesi</div>
+            </div>
+            <div class="result-grid">
+                ${slashCommands.map((item) => `
+                    <div class="result-card">
+                        <div class="result-key">${escapeHtml(item.cmd)}</div>
+                        <div class="result-value">${escapeHtml(item.desc)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
 function scrollToBottom() {
     terminalBody.scrollTop = terminalBody.scrollHeight;
+}
+
+function forceScrollToBottom() {
+    scrollToBottom();
+    requestAnimationFrame(() => {
+        scrollToBottom();
+        requestAnimationFrame(scrollToBottom);
+    });
 }
 
 function autoResizeInput() {
@@ -76,7 +128,7 @@ function createMessageElement(contentHtml) {
     div.style.width = '100%';
     div.innerHTML = contentHtml;
     terminalBody.appendChild(div);
-    scrollToBottom();
+    forceScrollToBottom();
     return div;
 }
 
@@ -381,16 +433,28 @@ async function sendCommand(text, isApproved = false) {
         const operatorId = localStorage.getItem('operator_id') || '';
         const tenantId = localStorage.getItem('tenant_id') || '';
 
+        const bearerToken = localStorage.getItem('bearer_token');
         const response = await fetch('/command-ui', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                ...(bearerToken ? { 'Authorization': `Bearer ${bearerToken}` } : {}),
                 'X-Session-Id': sessionId,
                 ...(operatorId ? { 'X-Operator-Id': operatorId } : {}),
                 ...(tenantId ? { 'X-Tenant-Id': tenantId } : {}),
             },
             body: JSON.stringify({ text, approved: isApproved }),
         });
+
+        if (response.status === 401) {
+            stepBlock.removeChild(loader);
+            const step = document.createElement('div');
+            step.className = 'step error';
+            step.innerHTML = `<span>x</span><span>Yetki hatasi: Bearer token gerekli. URL'ye ?token=... ekleyin veya localStorage 'bearer_token' ayarlayin.</span>`;
+            stepBlock.appendChild(step);
+            forceScrollToBottom();
+            return;
+        }
 
         const data = await response.json();
         stepBlock.removeChild(loader);
@@ -446,7 +510,7 @@ async function sendCommand(text, isApproved = false) {
         stepBlock.appendChild(step);
     }
 
-    scrollToBottom();
+    forceScrollToBottom();
 }
 
 window.approveCommand = function (button) {
@@ -579,6 +643,23 @@ cliInput.addEventListener('keydown', async (event) => {
             return;
         }
 
+        if (lowerCmd === 'yardim' || lowerCmd === 'help') {
+            createMessageElement(`
+                <div style="display: flex; gap: 8px; width: 100%;">
+                    <span style="color: var(--accent-blue); flex: 0 0 auto;">&gt;</span>
+                    <span class="user-command">${escapeHtml(text.trim())}</span>
+                </div>
+            `);
+            const msg = document.createElement('div');
+            msg.className = 'message system';
+            msg.innerHTML = renderHelpCommands();
+            terminalBody.appendChild(msg);
+            forceScrollToBottom();
+            cliInput.disabled = false;
+            cliInput.focus();
+            return;
+        }
+
         // Yerel komut yakalamaları
         if (['time', 'saat'].includes(lowerCmd)) {
             const now = new Date().toLocaleTimeString('tr-TR');
@@ -640,11 +721,152 @@ document.addEventListener('click', (e) => {
             cliInput.focus();
         }
     }
+
+    if (!e.target.closest('.slash-menu') && e.target !== cliInput) {
+        slashActive = false;
+        slashMenu.classList.remove('active');
+    }
 });
 
 /* ─── Canlı Ekran Paylaşımı (WebSocket) ─── */
 let screenWs = null;
 let screenStreaming = false;
+let screenControlEnabled = false;
+let screenMetrics = {
+    width: 0,
+    height: 0,
+    scale: 1,
+    cursorWidth: 0,
+    cursorHeight: 0,
+    virtualX: 0,
+    virtualY: 0,
+    virtualWidth: 0,
+    virtualHeight: 0,
+    lastImageWidth: 0,
+    lastImageHeight: 0,
+};
+let screenClickMode = 'double';
+let screenLongPressTimer = null;
+let screenLongPressFired = false;
+let screenFullscreenEnabled = false;
+let screenDebugEnabled = false;
+let screenControlGloballyDisabled = true;
+
+function setScreenControlState(enabled) {
+    if (screenControlGloballyDisabled) {
+        screenControlEnabled = false;
+    } else {
+        screenControlEnabled = enabled;
+    }
+    const btn = document.getElementById('screen-control-toggle');
+    if (btn) {
+        btn.classList.toggle('active', screenControlEnabled);
+        btn.textContent = screenControlEnabled ? 'Kontrol: Açık' : 'Kontrol: Kapalı';
+    }
+    document.body.classList.toggle('screen-control-active', screenControlEnabled);
+}
+
+function setClickMode(mode) {
+    screenClickMode = mode === 'single' ? 'single' : 'double';
+    const btn = document.getElementById('screen-click-mode');
+    if (btn) {
+        btn.textContent = screenClickMode === 'single' ? 'Tık: Tek' : 'Tık: Çift';
+    }
+}
+
+function setScreenFullscreenState(enabled) {
+    screenFullscreenEnabled = enabled;
+    const preview = document.getElementById('screen-preview');
+    const btn = document.getElementById('screen-fullscreen-toggle');
+    if (preview) {
+        preview.classList.toggle('fullscreen', enabled);
+    }
+    document.body.classList.toggle('screen-fullscreen-active', enabled);
+    if (btn) {
+        btn.textContent = enabled ? 'Pencere' : 'Tam Ekran';
+    }
+}
+
+function setScreenDebugState(enabled) {
+    if (screenControlGloballyDisabled) {
+        screenDebugEnabled = false;
+    } else {
+        screenDebugEnabled = enabled;
+    }
+    const btn = document.getElementById('screen-debug-toggle');
+    if (btn) {
+        btn.classList.toggle('active', screenDebugEnabled);
+        btn.textContent = screenDebugEnabled ? 'Debug: Açık' : 'Debug: Kapalı';
+    }
+}
+
+async function sendScreenClick(x, y, { button = 'left', doubleClick = false } = {}) {
+    let bearerToken = localStorage.getItem('bearer_token');
+    if (!bearerToken) {
+        const urlToken = new URLSearchParams(window.location.search).get('token');
+        if (urlToken) {
+            bearerToken = urlToken;
+            localStorage.setItem('bearer_token', urlToken);
+        }
+    }
+    const tokenQuery = bearerToken ? `?token=${encodeURIComponent(bearerToken)}` : '';
+    await fetch(`/screen/click${tokenQuery}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(bearerToken ? { 'Authorization': `Bearer ${bearerToken}` } : {}),
+        },
+        body: JSON.stringify({
+            x,
+            y,
+            button,
+            double_click: Boolean(doubleClick),
+        }),
+    });
+}
+
+function getScreenClickPoint(event, element, canvasElement) {
+    if (!screenMetrics.width || !screenMetrics.height) {
+        return null;
+    }
+    const targetRect = canvasElement || element;
+    const rect = targetRect.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+        return null;
+    }
+
+    const naturalWidth = screenMetrics.lastImageWidth || element.naturalWidth || rect.width;
+    const naturalHeight = screenMetrics.lastImageHeight || element.naturalHeight || rect.height;
+    if (!naturalWidth || !naturalHeight) {
+        return null;
+    }
+
+    const scale = Math.min(rect.width / naturalWidth, rect.height / naturalHeight);
+    const displayWidth = naturalWidth * scale;
+    const displayHeight = naturalHeight * scale;
+    const offsetX = (rect.width - displayWidth) / 2;
+    const offsetY = (rect.height - displayHeight) / 2;
+
+    const clickX = event.clientX - rect.left - offsetX;
+    const clickY = event.clientY - rect.top - offsetY;
+
+    const clampedX = Math.max(0, Math.min(displayWidth, clickX));
+    const clampedY = Math.max(0, Math.min(displayHeight, clickY));
+
+    const imageX = clampedX / scale;
+    const imageY = clampedY / scale;
+
+    const targetWidth = screenMetrics.virtualWidth || screenMetrics.cursorWidth || screenMetrics.width;
+    const targetHeight = screenMetrics.virtualHeight || screenMetrics.cursorHeight || screenMetrics.height;
+    if (!targetWidth || !targetHeight) {
+        return null;
+    }
+    const baseX = Number.isFinite(screenMetrics.virtualX) ? screenMetrics.virtualX : 0;
+    const baseY = Number.isFinite(screenMetrics.virtualY) ? screenMetrics.virtualY : 0;
+    const mappedX = Math.max(0, Math.min(targetWidth - 1, Math.round((imageX / naturalWidth) * targetWidth)));
+    const mappedY = Math.max(0, Math.min(targetHeight - 1, Math.round((imageY / naturalHeight) * targetHeight)));
+    return { x: baseX + mappedX, y: baseY + mappedY };
+}
 
 function closeScreenShare() {
     const preview = document.getElementById('screen-preview');
@@ -656,6 +878,8 @@ function closeScreenShare() {
 
     screenWs = null;
     screenStreaming = false;
+    setScreenControlState(false);
+    setScreenFullscreenState(false);
     preview.classList.add('hidden');
     frame.src = '';
 }
@@ -683,7 +907,43 @@ function toggleScreenShare() {
         try {
             const msg = JSON.parse(event.data);
             if (msg.type === 'frame' && msg.data) {
-                document.getElementById('screen-frame').src = 'data:image/jpeg;base64,' + msg.data;
+                const dataUrl = 'data:image/jpeg;base64,' + msg.data;
+                document.getElementById('screen-frame').src = dataUrl;
+                if (screenCanvas && screenCanvasCtx) {
+                    const img = new Image();
+                    img.onload = () => {
+                        screenCanvas.width = img.width;
+                        screenCanvas.height = img.height;
+                        screenCanvasCtx.drawImage(img, 0, 0);
+                        screenMetrics.lastImageWidth = img.width;
+                        screenMetrics.lastImageHeight = img.height;
+                        if (screenDebugCanvas && screenDebugCtx) {
+                            screenDebugCanvas.width = img.width;
+                            screenDebugCanvas.height = img.height;
+                            screenDebugCtx.clearRect(0, 0, img.width, img.height);
+                        }
+                    };
+                    img.src = dataUrl;
+                }
+                if (msg.screen_width && msg.screen_height) {
+                    screenMetrics.width = Number(msg.screen_width) || 0;
+                    screenMetrics.height = Number(msg.screen_height) || 0;
+                }
+                if (msg.cursor_width && msg.cursor_height) {
+                    screenMetrics.cursorWidth = Number(msg.cursor_width) || 0;
+                    screenMetrics.cursorHeight = Number(msg.cursor_height) || 0;
+                }
+                if (msg.virtual_width && msg.virtual_height) {
+                    screenMetrics.virtualWidth = Number(msg.virtual_width) || 0;
+                    screenMetrics.virtualHeight = Number(msg.virtual_height) || 0;
+                }
+                if (msg.virtual_x !== undefined && msg.virtual_y !== undefined) {
+                    screenMetrics.virtualX = Number(msg.virtual_x) || 0;
+                    screenMetrics.virtualY = Number(msg.virtual_y) || 0;
+                }
+                if (msg.scale) {
+                    screenMetrics.scale = Number(msg.scale) || 1;
+                }
             }
         } catch (e) {
             // JSON parse hatası — yoksay
@@ -711,12 +971,187 @@ if (screenCloseBtn) {
     screenCloseBtn.addEventListener('click', closeScreenShare);
 }
 
+const screenControlBtn = document.getElementById('screen-control-toggle');
+if (screenControlBtn) {
+    screenControlBtn.addEventListener('click', () => {
+        if (screenControlGloballyDisabled) {
+            return;
+        }
+        setScreenControlState(!screenControlEnabled);
+    });
+}
+
+const screenClickModeBtn = document.getElementById('screen-click-mode');
+if (screenClickModeBtn) {
+    screenClickModeBtn.addEventListener('click', () => {
+        if (screenControlGloballyDisabled) {
+            return;
+        }
+        setClickMode(screenClickMode === 'double' ? 'single' : 'double');
+    });
+    setClickMode(screenClickMode);
+}
+
+const screenFullscreenBtn = document.getElementById('screen-fullscreen-toggle');
+if (screenFullscreenBtn) {
+    screenFullscreenBtn.addEventListener('click', () => {
+        setScreenFullscreenState(!screenFullscreenEnabled);
+    });
+}
+
+const screenDebugBtn = document.getElementById('screen-debug-toggle');
+if (screenDebugBtn) {
+    screenDebugBtn.addEventListener('click', () => {
+        if (screenControlGloballyDisabled) {
+            return;
+        }
+        setScreenDebugState(!screenDebugEnabled);
+    });
+    setScreenDebugState(false);
+}
+
+const screenFrame = document.getElementById('screen-frame');
+const screenClickLayer = document.getElementById('screen-click-layer');
+const screenGlobalBlocker = document.getElementById('screen-global-blocker');
+const screenCanvas = document.getElementById('screen-canvas');
+const screenCanvasCtx = screenCanvas ? screenCanvas.getContext('2d') : null;
+const screenDebugCanvas = document.getElementById('screen-debug-canvas');
+const screenDebugCtx = screenDebugCanvas ? screenDebugCanvas.getContext('2d') : null;
+if (screenClickLayer && screenFrame) {
+    screenClickLayer.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+    });
+
+    screenClickLayer.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!screenControlEnabled) {
+            return;
+        }
+        if (!screenMetrics.width || !screenMetrics.height) {
+            return;
+        }
+        if (screenLongPressFired) {
+            screenLongPressFired = false;
+            return;
+        }
+        const point = getScreenClickPoint(event, screenFrame, screenCanvas);
+        if (!point) {
+            return;
+        }
+        if (screenDebugEnabled && screenDebugCanvas && screenDebugCtx) {
+            const baseX = screenMetrics.virtualX || 0;
+            const baseY = screenMetrics.virtualY || 0;
+            const targetWidth = screenMetrics.virtualWidth || screenMetrics.cursorWidth || screenMetrics.width || 1;
+            const targetHeight = screenMetrics.virtualHeight || screenMetrics.cursorHeight || screenMetrics.height || 1;
+            const canvasX = (point.x - baseX) / targetWidth * screenDebugCanvas.width;
+            const canvasY = (point.y - baseY) / targetHeight * screenDebugCanvas.height;
+            screenDebugCtx.clearRect(0, 0, screenDebugCanvas.width, screenDebugCanvas.height);
+            screenDebugCtx.beginPath();
+            screenDebugCtx.arc(canvasX, canvasY, 8, 0, Math.PI * 2);
+            screenDebugCtx.strokeStyle = '#ff3b30';
+            screenDebugCtx.lineWidth = 3;
+            screenDebugCtx.stroke();
+        }
+
+        try {
+            await sendScreenClick(point.x, point.y, {
+                button: 'left',
+                doubleClick: screenClickMode === 'double',
+            });
+        } catch (e) {
+            // Sessizce yut
+        }
+    });
+
+    screenClickLayer.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.currentTarget && event.pointerId !== undefined) {
+            try {
+                event.currentTarget.setPointerCapture(event.pointerId);
+            } catch (e) {
+                // ignore
+            }
+        }
+        if (!screenControlEnabled) {
+            return;
+        }
+        if (!screenMetrics.width || !screenMetrics.height) {
+            return;
+        }
+        screenLongPressFired = false;
+        if (screenLongPressTimer) {
+            clearTimeout(screenLongPressTimer);
+        }
+        const point = getScreenClickPoint(event, screenFrame, screenCanvas);
+        if (!point) {
+            return;
+        }
+        screenLongPressTimer = setTimeout(async () => {
+            try {
+                await sendScreenClick(point.x, point.y, { button: 'right', doubleClick: false });
+                screenLongPressFired = true;
+            } catch (e) {
+                // Sessizce yut
+            }
+        }, 550);
+    });
+
+    screenClickLayer.addEventListener('pointerup', () => {
+        if (screenLongPressTimer) {
+            clearTimeout(screenLongPressTimer);
+            screenLongPressTimer = null;
+        }
+    });
+
+    screenClickLayer.addEventListener('pointerleave', (event) => {
+        if (screenLongPressTimer) {
+            clearTimeout(screenLongPressTimer);
+            screenLongPressTimer = null;
+        }
+        if (event.currentTarget && event.pointerId !== undefined) {
+            try {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+            } catch (e) {
+                // ignore
+            }
+        }
+    });
+}
+
+if (screenGlobalBlocker) {
+    const blockEvents = (event) => {
+        if (!screenControlEnabled) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+    };
+    screenGlobalBlocker.addEventListener('touchstart', blockEvents, { passive: false });
+    screenGlobalBlocker.addEventListener('touchmove', blockEvents, { passive: false });
+    screenGlobalBlocker.addEventListener('touchend', blockEvents, { passive: false });
+    screenGlobalBlocker.addEventListener('click', blockEvents);
+    screenGlobalBlocker.addEventListener('pointerdown', blockEvents);
+    screenGlobalBlocker.addEventListener('pointerup', blockEvents);
+}
+
 window.addEventListener('beforeunload', closeScreenShare);
 document.addEventListener('visibilitychange', () => {
     if (document.hidden && screenStreaming) {
         closeScreenShare();
     }
 });
+
+document.addEventListener('touchmove', (event) => {
+    if (screenControlEnabled && !screenControlGloballyDisabled) {
+        event.preventDefault();
+    }
+}, { passive: false });
+
+document.body.classList.add('screen-control-disabled');
+setScreenControlState(false);
 
 /* ─── Tema Seçimi (Theme Selection) ─── */
 const themeDots = document.querySelectorAll('.theme-dot');

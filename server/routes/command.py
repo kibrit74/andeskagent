@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import time
+import json
+import os
 from pathlib import Path
 import re
 from urllib.parse import urlsplit
@@ -35,15 +37,77 @@ from adapters.agent_browser_adapter import (
     open_document_in_agent_browser,
 )
 from core.auth import bearer_token_dependency
-from core.command_parser import parse_command
+from core.logger import get_logger
+from core.command_parser import ParsedCommand, parse_command
 from core.config import AppSettings, add_mail_recipient_to_whitelist, load_settings
 from core.errors import BrowserStateError, BrowserAuthError
-from core.memory_store import delete_memory, list_memory, set_memory
+from core.memory_store import delete_memory, get_memory_value, list_memory, set_memory
 from core.session_state import get_session_state, record_history, rewind_last
 from db import create_support_ticket, log_task
 
 
 settings = load_settings()
+logger = get_logger("teknikajan.command")
+AGENT_REGISTRY = {
+    "mail_agent": {
+        "name": "mail_agent",
+        "description": "Mail gonderme + mail analiz/ozetleme",
+        "workflow_profile": "file_chain",
+        "skills": [
+            "send_file",
+            "send_latest",
+            "open_application",
+            "wait_for_window",
+            "focus_window",
+            "click_ui",
+            "type_ui",
+            "read_screen",
+            "verify_ui_state",
+        ],
+    },
+    "file_agent": {
+        "name": "file_agent",
+        "description": "Dosya/klasor/arsiv zinciri",
+        "workflow_profile": "file_chain",
+        "skills": [
+            "search_file",
+            "open_file",
+            "copy_file",
+            "move_file",
+            "rename_file",
+            "delete_file",
+            "create_folder",
+            "send_file",
+            "send_latest",
+        ],
+    },
+    "browser_agent": {
+        "name": "browser_agent",
+        "description": "Agent tarayici islemleri",
+        "workflow_profile": "agent_browser",
+        "skills": [
+            "open_agent_browser",
+            "navigate_agent_browser",
+            "open_document_in_agent_browser",
+            "click_pdf_link",
+            "list_pdf_links",
+            "reuse_agent_browser_session",
+            "read_agent_browser_state",
+            "close_agent_browser_session",
+        ],
+    },
+    "support_agent": {
+        "name": "support_agent",
+        "description": "Ariza teshis ve plan",
+        "workflow_profile": "system_repair",
+        "skills": [
+            "system_status",
+            "list_scripts",
+            "run_script",
+            "create_ticket",
+        ],
+    },
+}
 _INTERACTIVE_SESSION: dict[str, object] = {
     "retry_text": "",
     "retry_approved": False,
@@ -65,6 +129,18 @@ _INTERACTIVE_SESSION: dict[str, object] = {
     "browser_active_tab_id": "",
     "browser_reusable": False,
     "browser_pending_user_finish": False,
+    "pending_prompt": "",
+    "pending_action": "",
+    "pending_params": {},
+    "pending_field": "",
+    "pending_recipient_action": "",
+    "pending_recipient_params": {},
+    "pending_recipient_prompt": "",
+    "pending_recipient_expires_at": 0.0,
+    "approval_required": False,
+    "approval_action": "",
+    "approval_params": {},
+    "approval_profile": "",
 }
 
 
@@ -93,10 +169,26 @@ def _apply_model_override(base: AppSettings, provider: str | None, model: str | 
     return effective
 
 
+def _parse_model_list(env_value: str, fallback: str | None) -> list[str]:
+    items = [item.strip() for item in (env_value or "").split(",") if item.strip()]
+    if not items and fallback:
+        items = [fallback]
+    return items
+
+
 def _parse_slash_command(text: str) -> tuple[str, list[str]]:
     parts = text.strip().split()
     cmd = parts[0].lstrip("/").lower()
     return cmd, parts[1:]
+
+
+def _apply_agent_profile(parsed: ParsedCommand | None, session_state) -> None:
+    if not parsed:
+        return
+    agent_profile = str(session_state.current_agent_profile or "").strip()
+    if not agent_profile:
+        return
+    parsed.workflow_profile = agent_profile
 
 
 def _handle_slash_command(
@@ -150,8 +242,60 @@ def _handle_slash_command(
                     summary = "Hafiza komutu icin key=value formatini kullanin."
             next_step = "Mevcut kayitlari gormek icin /memory yazabilirsiniz."
 
+    elif cmd == "yardim":
+        summary = "Kullanim komutlari."
+        result = {
+            "commands": [
+                "/init",
+                "/memory",
+                "/model",
+                "/plan",
+                "/compact",
+                "/usage",
+                "/rewind",
+                "/audit",
+                "/durum",
+                "/agent",
+            ]
+        }
+        next_step = "Detay icin komutu yazabilirsiniz."
+
+    elif cmd == "durum":
+        result = get_system_status()
+        summary = "Sistem durumu alindi."
+        next_step = ""
+
+    elif cmd == "agent":
+        if not args or args[0].lower() in {"list", "liste"}:
+            summary = "Mevcut agent profilleri."
+            result = {"agents": list(AGENT_REGISTRY.values())}
+            next_step = "Secmek icin /agent <isim> yazin."
+        elif args[0].lower() in {"clear", "reset", "kapat"}:
+            session_state.current_agent = None
+            session_state.current_agent_profile = None
+            delete_memory(tenant_id=tenant_id, session_id=session_id, key="agent_name")
+            delete_memory(tenant_id=tenant_id, session_id=session_id, key="agent_profile")
+            summary = "Agent profili temizlendi."
+            next_step = "Varsayilan moda donuldu."
+        else:
+            agent_name = args[0].lower()
+            agent = AGENT_REGISTRY.get(agent_name)
+            if not agent:
+                summary = "Agent bulunamadi."
+                next_step = "Mevcut agentleri gormek icin /agent list yazin."
+            else:
+                session_state.current_agent = agent_name
+                session_state.current_agent_profile = agent.get("workflow_profile")
+                set_memory(tenant_id=tenant_id, session_id=session_id, key="agent_name", value=agent_name)
+                set_memory(tenant_id=tenant_id, session_id=session_id, key="agent_profile", value=agent.get("workflow_profile"))
+                summary = f"Agent secildi: {agent_name}"
+                next_step = "Komutu yazin, agent profiline gore calisir."
+                result = agent
+
     elif cmd == "model":
-        if not args:
+        if not args or (args and args[0].lower() in {"list", "liste"}):
+            openrouter_models = _parse_model_list(os.environ.get("OPENROUTER_MODELS", ""), settings_snapshot.openrouter_model)
+            gemini_models = _parse_model_list(os.environ.get("GEMINI_MODELS", ""), settings_snapshot.gemini_model)
             summary = "Aktif model bilgisi."
             result = {
                 "provider": session_state.model_provider or settings_snapshot.ai_provider,
@@ -159,18 +303,30 @@ def _handle_slash_command(
                     settings_snapshot.openrouter_model if (session_state.model_provider or settings_snapshot.ai_provider) == "openrouter"
                     else settings_snapshot.gemini_model
                 ),
+                "available_models": {
+                    "openrouter": openrouter_models,
+                    "gemini": gemini_models,
+                },
             }
             next_step = "Degistirmek icin /model openrouter <model> veya /model gemini <model> yazin."
         elif args[0].lower() == "reset":
             session_state.model_provider = None
             session_state.model_name = None
+            delete_memory(tenant_id=tenant_id, session_id=session_id, key="model_provider")
+            delete_memory(tenant_id=tenant_id, session_id=session_id, key="model_name")
             summary = "Model override sifirlandi."
             next_step = "Varsayilan model kullaniliyor."
         else:
             provider = args[0].lower()
             model = " ".join(args[1:]).strip() if len(args) > 1 else None
+            if provider not in {"openrouter", "gemini"}:
+                model = " ".join(args).strip()
+                provider = "openrouter"
             session_state.model_provider = provider
             session_state.model_name = model
+            set_memory(tenant_id=tenant_id, session_id=session_id, key="model_provider", value=provider)
+            if model:
+                set_memory(tenant_id=tenant_id, session_id=session_id, key="model_name", value=model)
             summary = "Model override ayarlandi."
             next_step = "Sonraki komutlar yeni modelle calisacak."
             result = {"provider": provider, "model": model}
@@ -198,9 +354,26 @@ def _handle_slash_command(
         result = {"path": str(compact_path)}
 
     elif cmd in {"usage", "cost"}:
-        summary = "Oturum kullanim bilgisi."
-        result = {"usage": session_state.usage}
-        next_step = ""
+        summary = "Oturum kullanim ozetini gosteriyorum."
+        result = {
+            "requests": int(session_state.usage.get("request_count", 0)),
+            "last_duration_ms": float(session_state.usage.get("last_request_ms", 0.0)),
+            "model_provider": session_state.model_provider or settings_snapshot.ai_provider,
+            "model_name": session_state.model_name or (
+                settings_snapshot.openrouter_model if (session_state.model_provider or settings_snapshot.ai_provider) == "openrouter"
+                else settings_snapshot.gemini_model
+            ),
+        }
+        next_step = "Isterseniz /audit ile detayli rapor alabilirsiniz."
+
+    elif cmd == "audit":
+        audit_path = Path(__file__).resolve().parent.parent / "data" / f"audit-{session_id}.json"
+        audit_path.parent.mkdir(parents=True, exist_ok=True)
+        audit_payload = {"session_id": session_id, "tenant_id": tenant_id, "history": session_state.history}
+        audit_path.write_text(json.dumps(audit_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        summary = "Audit raporu olusturuldu."
+        next_step = "Dosyayi inceleyebilir veya paylasabilirsiniz."
+        result = {"path": str(audit_path)}
 
     elif cmd == "rewind":
         removed = rewind_last(session_state)
@@ -213,7 +386,7 @@ def _handle_slash_command(
 
     else:
         summary = "Bilinmeyen komut."
-        next_step = "Kullanilabilir komutlar: /init, /memory, /model, /plan, /compact, /usage, /rewind"
+        next_step = "Kullanilabilir komutlar: /init, /memory, /model, /plan, /compact, /usage, /rewind, /agent"
 
     total_ms = 0.0
     return CommandResponse(
@@ -228,6 +401,24 @@ def _handle_slash_command(
         approval=ApprovalStatus(required=False, status="not_required"),
         params={},
         result=result,
+    )
+
+
+def _build_plan_response(parsed: ParsedCommand, *, parse_ms: float) -> CommandResponse:
+    summary = "Plan olusturuldu. Onay verirseniz uygulanacak."
+    next_step = "Uygulamak icin 'uygula' veya 'devam' yazin. Yeniden plan icin 'yeniden planla' yazin."
+    return CommandResponse(
+        action="plan",
+        confidence=parsed.confidence,
+        workflow_profile=parsed.workflow_profile,
+        session_context=_build_session_context(),
+        browser_context=_build_browser_context(),
+        timing={"parse_ms": parse_ms, "execute_ms": 0.0, "total_ms": parse_ms, "resumed": False},
+        summary=summary,
+        next_step=next_step,
+        approval=ApprovalStatus(required=False, status="not_required"),
+        params=parsed.params,
+        result={"action": parsed.action, "params": parsed.params, "workflow": parsed.workflow_profile},
     )
 
 
@@ -254,6 +445,18 @@ def _clear_interactive_session() -> None:
             "browser_active_tab_id": "",
             "browser_reusable": False,
             "browser_pending_user_finish": False,
+            "pending_prompt": "",
+            "pending_action": "",
+            "pending_params": {},
+            "pending_field": "",
+            "pending_recipient_action": "",
+            "pending_recipient_params": {},
+            "pending_recipient_prompt": "",
+            "pending_recipient_expires_at": 0.0,
+            "approval_required": False,
+            "approval_action": "",
+            "approval_params": {},
+            "approval_profile": "",
         }
     )
 
@@ -263,8 +466,24 @@ def _clear_retry_context() -> None:
     _INTERACTIVE_SESSION["retry_approved"] = False
 
 
+def _clear_approval_context() -> None:
+    _INTERACTIVE_SESSION["pending_action"] = ""
+    _INTERACTIVE_SESSION["pending_prompt"] = ""
+    _INTERACTIVE_SESSION["pending_params"] = {}
+    _INTERACTIVE_SESSION["pending_field"] = ""
+    _INTERACTIVE_SESSION["pending_recipient_action"] = ""
+    _INTERACTIVE_SESSION["pending_recipient_params"] = {}
+    _INTERACTIVE_SESSION["pending_recipient_prompt"] = ""
+    _INTERACTIVE_SESSION["pending_recipient_expires_at"] = 0.0
+    _INTERACTIVE_SESSION["approval_required"] = False
+    _INTERACTIVE_SESSION["approval_action"] = ""
+    _INTERACTIVE_SESSION["approval_params"] = {}
+    _INTERACTIVE_SESSION["approval_profile"] = ""
+
+
 def _clear_non_browser_context() -> None:
     _clear_retry_context()
+    _clear_approval_context()
     _INTERACTIVE_SESSION["active_process_name"] = ""
     _INTERACTIVE_SESSION["active_title_contains"] = ""
     _INTERACTIVE_SESSION["active_file_path"] = ""
@@ -286,6 +505,29 @@ def _clear_browser_context() -> None:
     _INTERACTIVE_SESSION["browser_active_tab_id"] = ""
     _INTERACTIVE_SESSION["browser_reusable"] = False
     _INTERACTIVE_SESSION["browser_pending_user_finish"] = False
+    _INTERACTIVE_SESSION["approval_required"] = False
+    _INTERACTIVE_SESSION["approval_action"] = ""
+    _INTERACTIVE_SESSION["approval_params"] = {}
+    _INTERACTIVE_SESSION["approval_profile"] = ""
+
+
+def _remember_pending_approval(action: str, params: dict[str, object], profile: str | None) -> None:
+    _INTERACTIVE_SESSION["approval_required"] = True
+    _INTERACTIVE_SESSION["approval_action"] = action
+    _INTERACTIVE_SESSION["approval_params"] = dict(params or {})
+    _INTERACTIVE_SESSION["approval_profile"] = profile or ""
+
+
+def _consume_pending_approval() -> ParsedCommand | None:
+    if not _INTERACTIVE_SESSION.get("approval_required"):
+        return None
+    action = str(_INTERACTIVE_SESSION.get("approval_action", "") or "").strip()
+    params = dict(_INTERACTIVE_SESSION.get("approval_params", {}) or {})
+    profile = str(_INTERACTIVE_SESSION.get("approval_profile", "") or "").strip() or None
+    _clear_approval_context()
+    if not action:
+        return None
+    return ParsedCommand(action=action, params=params, confidence=0.95, workflow_profile=profile)
 
 
 def _has_browser_session() -> bool:
@@ -388,6 +630,11 @@ def _looks_like_open_intent(text: str) -> bool:
 
 def _extract_urls(text: str) -> list[str]:
     return [match.rstrip(").,;") for match in re.findall(r"https?://[^\s)]+", text or "", flags=re.IGNORECASE)]
+
+
+def _extract_email_address(text: str) -> str | None:
+    match = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", text or "")
+    return match.group(0) if match else None
 
 
 def _extract_domains(text: str) -> list[str]:
@@ -738,7 +985,10 @@ router = APIRouter(
     tags=["command"],
     dependencies=[Depends(bearer_token_dependency(settings.bearer_token))],
 )
-ui_router = APIRouter(tags=["command-ui"])
+ui_router = APIRouter(
+    tags=["command-ui"],
+    dependencies=[Depends(bearer_token_dependency(settings.bearer_token))],
+)
 
 
 class CommandRequest(BaseModel):
@@ -844,6 +1094,14 @@ def _search_with_fallback(*, query: str, location: str, extension: str | None) -
 def execute_command(request: CommandRequest, http_request: Request) -> CommandResponse:
     """Dogal dil komutunu parse et ve ilgili aksiyonu calistir."""
     request_started_at = time.perf_counter()
+    global settings
+    settings = load_settings()
+    try:
+        key_len = len(settings.openrouter_api_key or "")
+        provider = settings.ai_provider
+        logger.debug("AI config loaded: provider=%s openrouter_key_len=%s", provider, key_len)
+    except Exception:
+        pass
     parsed = None
     result = None
     error = None
@@ -858,7 +1116,45 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
     command_approved = request.approved
     session_id, operator_id, tenant_id = _resolve_session_meta(http_request)
     session_state = get_session_state(session_id, operator_id=operator_id, tenant_id=tenant_id)
+    if session_state.model_provider is None:
+        session_state.model_provider = get_memory_value(tenant_id=tenant_id, session_id=session_id, key="model_provider")
+    if session_state.model_name is None:
+        session_state.model_name = get_memory_value(tenant_id=tenant_id, session_id=session_id, key="model_name")
+    if session_state.current_agent is None:
+        session_state.current_agent = get_memory_value(tenant_id=tenant_id, session_id=session_id, key="agent_name")
+    if session_state.current_agent_profile is None:
+        session_state.current_agent_profile = get_memory_value(tenant_id=tenant_id, session_id=session_id, key="agent_profile")
+    if session_state.current_agent and not session_state.current_agent_profile:
+        agent = AGENT_REGISTRY.get(str(session_state.current_agent))
+        if agent:
+            session_state.current_agent_profile = agent.get("workflow_profile")
     _restore_browser_session_from_worker()
+
+    normalized_cmd = _normalize_session_text(command_text)
+    if normalized_cmd in {"plan modundan cik", "plan modu kapat", "plan kapat", "plan off"}:
+        command_text = "/plan off"
+    elif normalized_cmd in {"plan modu ac", "plan modu acik", "plan ac", "plan"}:
+        command_text = "/plan"
+    elif normalized_cmd in {"model", "models", "model listesi", "model list"}:
+        command_text = "/model"
+    elif normalized_cmd in {"yardim", "help", "komutlar", "komut listesi"}:
+        command_text = "/yardim"
+    elif normalized_cmd in {"durum", "status", "sistem durumu"}:
+        command_text = "/durum"
+    elif normalized_cmd in {"memory", "hafiza", "hafıza"}:
+        command_text = "/memory"
+    elif normalized_cmd in {"init", "baslat", "baglam", "proje baglami"}:
+        command_text = "/init"
+    elif normalized_cmd in {"audit", "rapor", "oturum raporu"}:
+        command_text = "/audit"
+    elif normalized_cmd in {"usage", "kullanim", "kullanım"}:
+        command_text = "/usage"
+    elif normalized_cmd in {"compact", "ozet", "özet"}:
+        command_text = "/compact"
+    elif normalized_cmd in {"rewind", "geri al"}:
+        command_text = "/rewind"
+    elif normalized_cmd in {"agent", "ajan", "agent list"}:
+        command_text = "/agent"
 
     if command_text.strip().startswith("/"):
         return _handle_slash_command(
@@ -868,6 +1164,109 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
             tenant_id=tenant_id,
             settings_snapshot=settings,
         )
+
+    pending_action = str(_INTERACTIVE_SESSION.get("pending_action", "") or "").strip()
+    if pending_action:
+        pending_field = str(_INTERACTIVE_SESSION.get("pending_field", "") or "").strip()
+        pending_params = dict(_INTERACTIVE_SESSION.get("pending_params", {}) or {})
+        resolved_value: str | None = None
+
+        if pending_field == "recipient":
+            resolved_value = _extract_email_address(command_text)
+        elif pending_field == "new_name":
+            resolved_value = command_text.strip()
+        elif pending_field == "app_name":
+            resolved_value = command_text.strip()
+        elif pending_field == "destination_location":
+            normalized = _normalize_session_text(command_text)
+            for location in ("desktop", "documents", "downloads"):
+                if location in normalized:
+                    resolved_value = location
+                    break
+
+        if resolved_value:
+            pending_params[pending_field] = resolved_value
+            _INTERACTIVE_SESSION["pending_action"] = ""
+            _INTERACTIVE_SESSION["pending_prompt"] = ""
+            _INTERACTIVE_SESSION["pending_params"] = {}
+            _INTERACTIVE_SESSION["pending_field"] = ""
+            parsed = ParsedCommand(
+                action=pending_action,
+                params=pending_params,
+                confidence=0.95,
+                workflow_profile="file_chain",
+            )
+            _apply_agent_profile(parsed, session_state)
+            command_approved = True
+        else:
+            summary = str(_INTERACTIVE_SESSION.get("pending_prompt", "") or "Lutfen devam edin.")
+            next_step = "Bilgiyi daha net yazin."
+            return CommandResponse(
+                action="unknown",
+                confidence=0.0,
+                workflow_profile="file_chain",
+                session_context=_build_session_context(),
+                browser_context=_build_browser_context(),
+                timing={"parse_ms": 0.0, "execute_ms": 0.0, "total_ms": 0.0, "resumed": False},
+                summary=summary,
+                next_step=next_step,
+                approval=ApprovalStatus(required=False, status="not_required"),
+                params={},
+                result={"status": "awaiting_input", "field": pending_field},
+            )
+
+    # Backup resume for recipient input if pending state was lost.
+    email_value = _extract_email_address(command_text)
+    pending_recipient_action = str(_INTERACTIVE_SESSION.get("pending_recipient_action", "") or "").strip()
+    pending_recipient_params = dict(_INTERACTIVE_SESSION.get("pending_recipient_params", {}) or {})
+    pending_recipient_expires_at = float(_INTERACTIVE_SESSION.get("pending_recipient_expires_at", 0.0) or 0.0)
+    if email_value and pending_recipient_action and time.time() <= pending_recipient_expires_at:
+        pending_recipient_params["recipient"] = email_value
+        _INTERACTIVE_SESSION["pending_recipient_action"] = ""
+        _INTERACTIVE_SESSION["pending_recipient_params"] = {}
+        _INTERACTIVE_SESSION["pending_recipient_prompt"] = ""
+        _INTERACTIVE_SESSION["pending_recipient_expires_at"] = 0.0
+        parsed = ParsedCommand(
+            action=pending_recipient_action,
+            params=pending_recipient_params,
+            confidence=0.95,
+            workflow_profile="file_chain",
+        )
+        _apply_agent_profile(parsed, session_state)
+        command_approved = True
+
+    if request.approved:
+        approved_parsed = _consume_pending_approval()
+        if approved_parsed:
+            parsed = approved_parsed
+            command_approved = True
+
+    plan_accept = {"uygula", "devam", "onayla", "evet", "olur", "tamam"}
+    plan_reject = {"hayir", "degil", "beğenmedim", "begenmedim", "yeniden planla", "yeniden plan", "planı değiştir", "plani degistir"}
+    if session_state.plan_mode:
+        if normalized_cmd in plan_accept and session_state.last_plan:
+            parsed = ParsedCommand(
+                action=session_state.last_plan.get("action", "unknown"),
+                params=session_state.last_plan.get("params", {}),
+                confidence=float(session_state.last_plan.get("confidence", 0.8)),
+                workflow_profile=session_state.last_plan.get("workflow_profile"),
+            )
+            parse_ms = 0.0
+            session_state.plan_mode = False
+            _apply_agent_profile(parsed, session_state)
+        elif normalized_cmd in plan_reject and session_state.last_plan_text:
+            active_settings = _apply_model_override(settings, session_state.model_provider, session_state.model_name)
+            parse_started_at = time.perf_counter()
+            parsed = parse_command(session_state.last_plan_text, active_settings)
+            parse_ms = round((time.perf_counter() - parse_started_at) * 1000, 1)
+            _apply_agent_profile(parsed, session_state)
+            session_state.last_plan = {
+                "action": parsed.action,
+                "params": parsed.params,
+                "workflow_profile": parsed.workflow_profile,
+                "confidence": parsed.confidence,
+            }
+            return _build_plan_response(parsed, parse_ms=parse_ms)
     _restore_browser_session_from_worker()
 
     if _is_browser_close_command(request.text):
@@ -936,34 +1335,25 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
             )
 
     try:
-        parse_started_at = time.perf_counter()
-        active_settings = _apply_model_override(settings, session_state.model_provider, session_state.model_name)
-        parsed = parse_command(command_text, active_settings)
-        parse_ms = round((time.perf_counter() - parse_started_at) * 1000, 1)
-        _apply_active_context(parsed)
+        if parsed is None:
+            parse_started_at = time.perf_counter()
+            active_settings = _apply_model_override(settings, session_state.model_provider, session_state.model_name)
+            parsed = parse_command(command_text, active_settings)
+            parse_ms = round((time.perf_counter() - parse_started_at) * 1000, 1)
+            _apply_agent_profile(parsed, session_state)
+            _apply_active_context(parsed)
+        else:
+            _apply_active_context(parsed)
 
         if session_state.plan_mode:
-            summary = "Plan modu acik. Bu komut icin onerilen aksiyon olusturuldu."
-            next_step = "Plan uygun ise /plan off ile kapatip komutu tekrar calistirin."
-            result = {"action": parsed.action, "params": parsed.params, "workflow": parsed.workflow_profile}
-            return CommandResponse(
-                action="plan",
-                confidence=parsed.confidence,
-                workflow_profile=parsed.workflow_profile,
-                session_context=_build_session_context(),
-                browser_context=_build_browser_context(),
-                timing={
-                    "parse_ms": parse_ms,
-                    "execute_ms": 0.0,
-                    "total_ms": parse_ms,
-                    "resumed": False,
-                },
-                summary=summary,
-                next_step=next_step,
-                approval=ApprovalStatus(required=False, status="not_required"),
-                params=parsed.params,
-                result=result,
-            )
+            session_state.last_plan = {
+                "action": parsed.action,
+                "params": parsed.params,
+                "workflow_profile": parsed.workflow_profile,
+                "confidence": parsed.confidence,
+            }
+            session_state.last_plan_text = command_text
+            return _build_plan_response(parsed, parse_ms=parse_ms)
 
         if parsed.action == "open_agent_browser":
             approval_required = True
@@ -1525,8 +1915,20 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
                             "resolved_location": resolved_location,
                         }
                 else:
-                    summary = f"En son dosya ({latest['name']}) bulundu, ancak alici belirtilmedigi icin gonderilemiyor."
-                    next_step = "Lutfen komutu alici adresi ile birlikte tekrar yazin."
+                    _INTERACTIVE_SESSION["pending_prompt"] = "Alici e-posta adresi gerekli."
+                    _INTERACTIVE_SESSION["pending_action"] = "send_latest"
+                    _INTERACTIVE_SESSION["pending_field"] = "recipient"
+                    _INTERACTIVE_SESSION["pending_params"] = {
+                        "query": parsed.params.get("query", ""),
+                        "location": parsed.params.get("location", "desktop"),
+                        "extension": parsed.params.get("extension"),
+                    }
+                    _INTERACTIVE_SESSION["pending_recipient_prompt"] = "Alici e-posta adresi gerekli."
+                    _INTERACTIVE_SESSION["pending_recipient_action"] = "send_latest"
+                    _INTERACTIVE_SESSION["pending_recipient_params"] = dict(_INTERACTIVE_SESSION["pending_params"])
+                    _INTERACTIVE_SESSION["pending_recipient_expires_at"] = time.time() + 300
+                    summary = f"En son dosya ({latest['name']}) bulundu. Alici e-posta adresini yazin."
+                    next_step = "Ornek: ali@example.com"
                     result = {
                         "latest_file": latest,
                         "message": "Dosya bulundu. Gondermek icin alici e-posta adresi gerekli.",
@@ -1784,8 +2186,20 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
                             "resolved_location": resolved_location,
                         }
                 else:
-                    summary = "Birden fazla dosya bulundu ancak alici maili belirtilmemis."
-                    next_step = "Alici adresi ile komutu tekrar gonderin."
+                    _INTERACTIVE_SESSION["pending_prompt"] = "Alici e-posta adresi gerekli."
+                    _INTERACTIVE_SESSION["pending_action"] = "send_file"
+                    _INTERACTIVE_SESSION["pending_field"] = "recipient"
+                    _INTERACTIVE_SESSION["pending_params"] = {
+                        "query": parsed.params.get("query", ""),
+                        "location": parsed.params.get("location", "desktop"),
+                        "extension": parsed.params.get("extension"),
+                    }
+                    _INTERACTIVE_SESSION["pending_recipient_prompt"] = "Alici e-posta adresi gerekli."
+                    _INTERACTIVE_SESSION["pending_recipient_action"] = "send_file"
+                    _INTERACTIVE_SESSION["pending_recipient_params"] = dict(_INTERACTIVE_SESSION["pending_params"])
+                    _INTERACTIVE_SESSION["pending_recipient_expires_at"] = time.time() + 300
+                    summary = "Alici e-posta adresi gerekli. Lutfen aliciyi yazin."
+                    next_step = "Ornek: ali@example.com"
                     result = {
                         "found_files": items[:5],
                         "count": len(items),
@@ -1836,17 +2250,38 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
                         active_key = active_settings.gemini_api_key
                         active_model = active_settings.gemini_model
 
-                    result = generate_and_run_script(
-                        command_text,
-                        api_key=active_key,
-                        model=active_model,
-                        ai_provider=active_settings.ai_provider,
-                        workflow_profile=parsed.workflow_profile if parsed else None,
-                        allowed_folders=settings.allowed_folders,
-                        forbidden_actions=settings.forbidden_actions,
-                    )
-                    summary = "Sistemdeki kural tabanli otomasyon islendi."
-                    next_step = "Konsol ciktilarina bakabilirsiniz."
+                    try:
+                        result = generate_and_run_script(
+                            command_text,
+                            api_key=active_key,
+                            model=active_model,
+                            ai_provider=active_settings.ai_provider,
+                            workflow_profile=parsed.workflow_profile if parsed else None,
+                            allowed_folders=settings.allowed_folders,
+                            forbidden_actions=settings.forbidden_actions,
+                        )
+                        summary = "Sistemdeki kural tabanli otomasyon islendi."
+                        next_step = "Konsol ciktilarina bakabilirsiniz."
+                    except Exception as primary_exc:
+                        # Fallback to Gemini when OpenRouter fails.
+                        if (
+                            active_settings.ai_provider == "openrouter"
+                            and settings.gemini_api_key
+                            and settings.gemini_model
+                        ):
+                            result = generate_and_run_script(
+                                command_text,
+                                api_key=settings.gemini_api_key,
+                                model=settings.gemini_model,
+                                ai_provider="gemini",
+                                workflow_profile=parsed.workflow_profile if parsed else None,
+                                allowed_folders=settings.allowed_folders,
+                                forbidden_actions=settings.forbidden_actions,
+                            )
+                            summary = "OpenRouter hatasi alindi, Gemini ile tekrar denendi."
+                            next_step = "Konsol ciktilarina bakabilirsiniz."
+                        else:
+                            raise primary_exc
                 except Exception as eval_exc:
                     summary = "Sistem bu istegi zekice analiz etti fakat gerceklestirebilecek guvenli bir yol bulamadi."
                     error = _humanize_error(str(eval_exc))
@@ -1947,6 +2382,11 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
             output_text=str(exc),
             metadata={"action": parsed.action if parsed else "parse_failed", "type": type(exc).__name__, "effective_text": command_text},
         )
+
+    if approval_status == "pending" and parsed is not None:
+        _remember_pending_approval(parsed.action, parsed.params, parsed.workflow_profile)
+    elif approval_status != "pending":
+        _clear_approval_context()
 
     response = CommandResponse(
         action=parsed.action if parsed else "unknown",

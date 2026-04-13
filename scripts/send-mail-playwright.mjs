@@ -109,11 +109,19 @@ async function main() {
   }
 
   const payload = JSON.parse(raw);
-  const context = await chromium.launchPersistentContext(payload.userDataDir, {
-    channel: payload.browserChannel || "msedge",
+  const launchOptions = {
     headless: Boolean(payload.headless),
     viewport: { width: 1440, height: 960 },
-  });
+    locale: "tr-TR",
+    timezoneId: "Europe/Istanbul",
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    ignoreDefaultArgs: ["--enable-automation"],
+  };
+  if (payload.browserChannel && payload.browserChannel !== "chromium") {
+    launchOptions.channel = payload.browserChannel;
+  }
+  const context = await chromium.launchPersistentContext(payload.userDataDir, launchOptions);
 
   try {
     const page = context.pages()[0] || await context.newPage();
