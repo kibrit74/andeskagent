@@ -11,6 +11,7 @@ from core.logger import configure_logging, get_logger
 from db import init_db
 from server.routes.command import router as command_router
 from server.routes.command import ui_router as command_ui_router
+from server.routes.endpoint_agents import router as endpoint_agents_router
 from server.routes.files import router as files_router
 from server.routes.mail import router as mail_router
 from server.routes.scripts import router as scripts_router
@@ -66,6 +67,7 @@ app.include_router(mail_router)
 app.include_router(scripts_router)
 app.include_router(command_router)
 app.include_router(command_ui_router)
+app.include_router(endpoint_agents_router)
 app.include_router(screen_stream_router)
 app.include_router(screen_control_router)
 

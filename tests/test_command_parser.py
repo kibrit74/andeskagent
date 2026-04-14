@@ -107,6 +107,18 @@ def test_parse_command_falls_back_without_gemini_key_for_file_search() -> None:
     assert parsed.params["extension"] == "xlsx"
 
 
+def test_parse_command_routes_google_pdf_search_to_agent_browser() -> None:
+    parsed = parse_command(
+        "googlede kıdem tazminatı hakkında pdf ara",
+        AppSettings(),
+    )
+
+    assert parsed.action == "navigate_agent_browser"
+    assert parsed.workflow_profile == "agent_browser"
+    assert parsed.params["url"].startswith("https://duckduckgo.com/?q=")
+    assert "kidem+tazminati+hakkinda+pdf" in parsed.params["url"]
+
+
 def test_parse_command_falls_back_to_open_file_for_search_and_open_request() -> None:
     parsed = parse_command(
         "masaustundeki Enerjisa Citrix Kullanim Dokumani_V1 dosyasini bul ve ac",

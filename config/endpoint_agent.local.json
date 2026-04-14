@@ -1,0 +1,22 @@
+{
+  "api_base_url": "http://127.0.0.1:8000",
+  "device_id": "a1160804-91f2-4bf7-84ae-60ffc82f5135",
+  "device_token": "1EWsj44ZD13s1iyTqvc6JzzXHSF3nNzlVM1sSB-sa6I",
+  "hostname": "DESKTOP-H29S286",
+  "os": "Windows-10-10.0.19045-SP0",
+  "rustdesk_id": "TEST-RUSTDESK-ID",
+  "version": "0.1.0",
+  "capabilities": [
+    "get_system_status",
+    "run_script",
+    "read_screen",
+    "collect_logs"
+  ],
+  "allowed_actions": [
+    "get_system_status",
+    "collect_logs"
+  ],
+  "allowed_scripts": [],
+  "poll_interval_seconds": 10,
+  "log_path": "logs\\ops.log"
+}

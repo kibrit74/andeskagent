@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Agentic CLI</title>
-    <link rel="stylesheet" href="style.css?v=26">
+    <link rel="stylesheet" href="style.css?v=27">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -17,6 +17,7 @@
             </div>
             <div class="window-title">Agentic Shell</div>
             <div class="header-actions">
+                <button id="endpoint-panel-toggle" class="screen-toggle-btn endpoint-toggle-btn" title="Endpoint Cihazlari">Cihazlar</button>
                 <div class="theme-dots" aria-label="Tema Seçimi">
                     <button class="theme-dot active" data-theme="default" style="background: #040609;" title="Varsayılan Tema"></button>
                     <button class="theme-dot" data-theme="burgundy" style="background: #4e1331;" title="Bordo Tema"></button>
@@ -43,6 +44,23 @@
             <div id="screen-click-layer" class="screen-click-layer" aria-hidden="true"></div>
         </div>
 
+        <div id="endpoint-panel" class="endpoint-panel hidden">
+            <div class="endpoint-panel-header">
+                <div>
+                    <div class="endpoint-panel-title">Endpoint Cihazlari</div>
+                    <div class="endpoint-panel-subtitle">Web'den canli agent job testi</div>
+                </div>
+                <div class="endpoint-panel-actions">
+                    <button id="endpoint-refresh" class="endpoint-action-btn">Yenile</button>
+                    <button id="endpoint-run-status" class="endpoint-action-btn primary">Sistem Durumu Gonder</button>
+                    <button id="endpoint-panel-close" class="screen-close-btn">x</button>
+                </div>
+            </div>
+            <div id="endpoint-panel-status" class="endpoint-panel-status">Cihaz listesi bekleniyor.</div>
+            <div id="endpoint-device-list" class="endpoint-device-list"></div>
+            <div id="endpoint-job-result" class="endpoint-job-result"></div>
+        </div>
+
         <div class="terminal-body" id="terminal-body">
             <div class="message system">
                 <span class="status-icon">&gt;</span>
@@ -59,6 +77,6 @@
         </div>
     </div>
     <div id="screen-global-blocker" class="screen-global-blocker" aria-hidden="true"></div>
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=27"></script>
 </body>
 </html>

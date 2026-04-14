@@ -23,6 +23,7 @@ from adapters.file_adapter import (
     search_files,
 )
 from adapters.mail_adapter import send_email_with_attachment
+from adapters.openclaude_adapter import run_openclaude_prompt
 from adapters.script_adapter import _mail_session_workflow, generate_and_run_script, run_script
 from adapters.script_adapter import _open_application as open_application
 from adapters.system_adapter import get_system_status
@@ -151,10 +152,11 @@ def _normalize_session_text(text: str) -> str:
     return " ".join(normalized.split())
 
 
-def _resolve_session_meta(request: Request) -> tuple[str, str | None, str | None]:
-    session_id = request.headers.get("x-session-id") or "default"
-    operator_id = request.headers.get("x-operator-id")
-    tenant_id = request.headers.get("x-tenant-id")
+def _resolve_session_meta(request: Request | None) -> tuple[str, str | None, str | None]:
+    headers = request.headers if request is not None else {}
+    session_id = headers.get("x-session-id") or "default"
+    operator_id = headers.get("x-operator-id")
+    tenant_id = headers.get("x-tenant-id")
     return session_id, operator_id, tenant_id
 
 
@@ -166,6 +168,8 @@ def _apply_model_override(base: AppSettings, provider: str | None, model: str | 
         effective.openrouter_model = model
     if effective.ai_provider == "gemini" and model:
         effective.gemini_model = model
+    if effective.ai_provider == "openclaude" and model:
+        effective.openclaude_model = model
     return effective
 
 
@@ -296,19 +300,26 @@ def _handle_slash_command(
         if not args or (args and args[0].lower() in {"list", "liste"}):
             openrouter_models = _parse_model_list(os.environ.get("OPENROUTER_MODELS", ""), settings_snapshot.openrouter_model)
             gemini_models = _parse_model_list(os.environ.get("GEMINI_MODELS", ""), settings_snapshot.gemini_model)
+            openclaude_models = _parse_model_list(os.environ.get("OPENCLAUDE_MODELS", ""), settings_snapshot.openclaude_model)
             summary = "Aktif model bilgisi."
             result = {
                 "provider": session_state.model_provider or settings_snapshot.ai_provider,
                 "model": session_state.model_name or (
-                    settings_snapshot.openrouter_model if (session_state.model_provider or settings_snapshot.ai_provider) == "openrouter"
-                    else settings_snapshot.gemini_model
+                    settings_snapshot.openrouter_model
+                    if (session_state.model_provider or settings_snapshot.ai_provider) == "openrouter"
+                    else (
+                        settings_snapshot.openclaude_model
+                        if (session_state.model_provider or settings_snapshot.ai_provider) == "openclaude"
+                        else settings_snapshot.gemini_model
+                    )
                 ),
                 "available_models": {
                     "openrouter": openrouter_models,
                     "gemini": gemini_models,
+                    "openclaude": openclaude_models,
                 },
             }
-            next_step = "Degistirmek icin /model openrouter <model> veya /model gemini <model> yazin."
+            next_step = "Degistirmek icin /model openrouter <model>, /model gemini <model> veya /model openclaude <model> yazin."
         elif args[0].lower() == "reset":
             session_state.model_provider = None
             session_state.model_name = None
@@ -319,7 +330,7 @@ def _handle_slash_command(
         else:
             provider = args[0].lower()
             model = " ".join(args[1:]).strip() if len(args) > 1 else None
-            if provider not in {"openrouter", "gemini"}:
+            if provider not in {"openrouter", "gemini", "openclaude"}:
                 model = " ".join(args).strip()
                 provider = "openrouter"
             session_state.model_provider = provider
@@ -354,14 +365,20 @@ def _handle_slash_command(
         result = {"path": str(compact_path)}
 
     elif cmd in {"usage", "cost"}:
+        active_provider = session_state.model_provider or settings_snapshot.ai_provider
         summary = "Oturum kullanim ozetini gosteriyorum."
         result = {
             "requests": int(session_state.usage.get("request_count", 0)),
             "last_duration_ms": float(session_state.usage.get("last_request_ms", 0.0)),
-            "model_provider": session_state.model_provider or settings_snapshot.ai_provider,
+            "model_provider": active_provider,
             "model_name": session_state.model_name or (
-                settings_snapshot.openrouter_model if (session_state.model_provider or settings_snapshot.ai_provider) == "openrouter"
-                else settings_snapshot.gemini_model
+                settings_snapshot.openrouter_model
+                if active_provider == "openrouter"
+                else (
+                    settings_snapshot.openclaude_model
+                    if active_provider == "openclaude"
+                    else settings_snapshot.gemini_model
+                )
             ),
         }
         next_step = "Isterseniz /audit ile detayli rapor alabilirsiniz."
@@ -618,6 +635,8 @@ def _resolve_agent_browser_target(target: str | None) -> str | None:
     normalized = _normalize_session_text(target)
     if "gmail" in normalized:
         return settings.playwright_mail_url
+    if "google" in normalized or "search" in normalized:
+        return "https://www.google.com/"
     if "calendar" in normalized or "takvim" in normalized:
         return "https://calendar.google.com/"
     return None
@@ -1020,6 +1039,12 @@ class CommandResponse(BaseModel):
 
 def _humanize_error(message: str) -> str:
     normalized = (message or "").lower()
+    if "usage limit" in normalized or "upgrade to pro" in normalized or "kullanim limiti" in normalized:
+        return "OpenClaude kullanim limiti doldu. Limit acilana kadar bekleyin veya /model ile baska bir saglayici/model secin."
+    if "openclaude cli bulunamadi" in normalized:
+        return "OpenClaude CLI bulunamadi. `npm install -g @gitlawb/openclaude` kurun veya OPENCLAUDE_COMMAND ayarlayin."
+    if "openclaude" in normalized:
+        return message or "OpenClaude istegi tamamlanamadi."
     if "agent browser" in normalized:
         return "Agent tarayici isleminde hata olustu. Tarayiciyi yeniden acmayi deneyin."
     if "gemini_ssl_timeout" in normalized:
@@ -1091,7 +1116,7 @@ def _search_with_fallback(*, query: str, location: str, extension: str | None) -
 
 
 @router.post("/command")
-def execute_command(request: CommandRequest, http_request: Request) -> CommandResponse:
+def execute_command(request: CommandRequest, http_request: Request = None) -> CommandResponse:
     """Dogal dil komutunu parse et ve ilgili aksiyonu calistir."""
     request_started_at = time.perf_counter()
     global settings
@@ -1220,7 +1245,18 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
     pending_recipient_action = str(_INTERACTIVE_SESSION.get("pending_recipient_action", "") or "").strip()
     pending_recipient_params = dict(_INTERACTIVE_SESSION.get("pending_recipient_params", {}) or {})
     pending_recipient_expires_at = float(_INTERACTIVE_SESSION.get("pending_recipient_expires_at", 0.0) or 0.0)
-    if email_value and pending_recipient_action and time.time() <= pending_recipient_expires_at:
+    pending_prompt_text = str(_INTERACTIVE_SESSION.get("pending_prompt", "") or "").lower()
+    remainder_text = ""
+    if email_value:
+        remainder_text = (command_text or "").replace(email_value, " ").strip().lower()
+    remainder_is_trivial = remainder_text in {"", "eposta", "e-posta", "email", "mail", "alici", "gonder"}
+    should_resume_recipient = bool(email_value) and remainder_is_trivial and (
+        (pending_recipient_action and time.time() <= pending_recipient_expires_at)
+        or ("alici e-posta adresi gerekli" in pending_prompt_text)
+    )
+    if should_resume_recipient:
+        if not pending_recipient_action:
+            pending_recipient_action = "send_file"
         pending_recipient_params["recipient"] = email_value
         _INTERACTIVE_SESSION["pending_recipient_action"] = ""
         _INTERACTIVE_SESSION["pending_recipient_params"] = {}
@@ -1335,9 +1371,103 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
             )
 
     try:
+        active_settings = _apply_model_override(settings, session_state.model_provider, session_state.model_name)
+        if active_settings.ai_provider == "openclaude" and parsed is None:
+            parse_started_at = time.perf_counter()
+            browser_candidate = parse_command(command_text, AppSettings(ai_provider="gemini"))
+            parse_ms = round((time.perf_counter() - parse_started_at) * 1000, 1)
+            if browser_candidate.action in {
+                "open_agent_browser",
+                "navigate_agent_browser",
+                "open_document_in_agent_browser",
+                "click_pdf_link",
+                "list_pdf_links",
+                "reuse_agent_browser_session",
+                "read_agent_browser_state",
+                "close_agent_browser_session",
+            }:
+                parsed = browser_candidate
+                _apply_agent_profile(parsed, session_state)
+                _apply_active_context(parsed)
+
+        if active_settings.ai_provider == "openclaude" and parsed is None:
+            parsed = ParsedCommand(
+                action="openclaude_chat",
+                confidence=1.0,
+                params={},
+                workflow_profile="generic",
+            )
+            openclaude_response = run_openclaude_prompt(
+                command_text,
+                settings=active_settings,
+                working_directory=Path(__file__).resolve().parents[2],
+            )
+            tool_calls = getattr(openclaude_response, "tool_calls", []) or []
+            tool_names = [tc.get("tool", "") for tc in tool_calls if isinstance(tc, dict)]
+            if tool_names:
+                tools_used = ", ".join(t.replace("mcp__teknikajan__", "") for t in tool_names)
+                summary = f"OpenClaude {len(tool_calls)} tool kullandi ({tools_used}). Islem tamamlandi."
+            else:
+                summary = "OpenClaude yaniti hazir."
+            next_step = "Takip komutu vermek icin yeni bir mesaj yazabilirsiniz."
+            result = {
+                "provider": "openclaude",
+                "mode": "mcp_agent",
+                "answer": openclaude_response.result,
+                "session_id": openclaude_response.session_id,
+                "num_turns": openclaude_response.num_turns,
+                "tool_calls": tool_calls,
+                "tool_count": len(tool_calls),
+                "duration_ms": round(openclaude_response.duration_ms, 1),
+                "duration_api_ms": round(openclaude_response.duration_api_ms, 1),
+                "total_cost_usd": round(openclaude_response.total_cost_usd, 6),
+                "usage": openclaude_response.usage,
+                "model_usage": openclaude_response.model_usage,
+            }
+            total_elapsed = round((time.perf_counter() - request_started_at) * 1000, 1)
+            response = CommandResponse(
+                action=parsed.action,
+                confidence=parsed.confidence,
+                workflow_profile=parsed.workflow_profile,
+                session_context=_build_session_context(),
+                browser_context=_build_browser_context(),
+                timing={"parse_ms": 0.0, "execute_ms": total_elapsed, "total_ms": total_elapsed, "resumed": command_text != original_text},
+                summary=summary,
+                next_step=next_step,
+                approval=ApprovalStatus(required=False, status="not_required"),
+                params=parsed.params,
+                result=result,
+            )
+            log_task(
+                settings.sqlite_path,
+                task_type="command",
+                status="success",
+                input_text=original_text,
+                output_text=openclaude_response.result,
+                metadata={
+                    "action": parsed.action,
+                    "confidence": parsed.confidence,
+                    "params": parsed.params,
+                    "summary": summary,
+                    "next_step": next_step,
+                    "approval_status": "not_required",
+                    "effective_text": command_text,
+                    "tool_calls": tool_calls,
+                    "timing_ms": {"parse": 0.0, "execute": total_elapsed},
+                },
+            )
+            record_history(
+                session_state,
+                command_text=command_text,
+                action=parsed.action,
+                status="success",
+                summary=summary,
+                elapsed_ms=total_elapsed,
+            )
+            return response
+
         if parsed is None:
             parse_started_at = time.perf_counter()
-            active_settings = _apply_model_override(settings, session_state.model_provider, session_state.model_name)
             parsed = parse_command(command_text, active_settings)
             parse_ms = round((time.perf_counter() - parse_started_at) * 1000, 1)
             _apply_agent_profile(parsed, session_state)
@@ -1926,7 +2056,7 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
                     _INTERACTIVE_SESSION["pending_recipient_prompt"] = "Alici e-posta adresi gerekli."
                     _INTERACTIVE_SESSION["pending_recipient_action"] = "send_latest"
                     _INTERACTIVE_SESSION["pending_recipient_params"] = dict(_INTERACTIVE_SESSION["pending_params"])
-                    _INTERACTIVE_SESSION["pending_recipient_expires_at"] = time.time() + 300
+                    _INTERACTIVE_SESSION["pending_recipient_expires_at"] = time.time() + 1800
                     summary = f"En son dosya ({latest['name']}) bulundu. Alici e-posta adresini yazin."
                     next_step = "Ornek: ali@example.com"
                     result = {
@@ -2197,7 +2327,7 @@ def execute_command(request: CommandRequest, http_request: Request) -> CommandRe
                     _INTERACTIVE_SESSION["pending_recipient_prompt"] = "Alici e-posta adresi gerekli."
                     _INTERACTIVE_SESSION["pending_recipient_action"] = "send_file"
                     _INTERACTIVE_SESSION["pending_recipient_params"] = dict(_INTERACTIVE_SESSION["pending_params"])
-                    _INTERACTIVE_SESSION["pending_recipient_expires_at"] = time.time() + 300
+                    _INTERACTIVE_SESSION["pending_recipient_expires_at"] = time.time() + 1800
                     summary = "Alici e-posta adresi gerekli. Lutfen aliciyi yazin."
                     next_step = "Ornek: ali@example.com"
                     result = {

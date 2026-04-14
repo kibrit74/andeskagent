@@ -16,3 +16,4 @@ winrt-Windows.Graphics.Imaging>=3.2,<4.0
 winrt-Windows.Media.Ocr>=3.2,<4.0
 winrt-Windows.Storage>=3.2,<4.0
 winrt-Windows.Storage.Streams>=3.2,<4.0
+mcp[cli]>=1.0

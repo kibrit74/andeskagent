@@ -1,0 +1,23 @@
+{
+  "api_base_url": "http://127.0.0.1:8000",
+  "device_id": "",
+  "device_token": "",
+  "hostname": "CUSTOMER-PC",
+  "os": "Windows",
+  "rustdesk_id": "",
+  "version": "0.1.0",
+  "capabilities": [
+    "get_system_status",
+    "collect_logs",
+    "run_script"
+  ],
+  "allowed_actions": [
+    "get_system_status",
+    "collect_logs"
+  ],
+  "allowed_scripts": [
+    "dns_flush"
+  ],
+  "poll_interval_seconds": 10,
+  "log_path": "logs/ops.log"
+}

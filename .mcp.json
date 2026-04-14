@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "teknikajan": {
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["tools/mcp_server.py"],
+      "env": {}
+    }
+  }
+}

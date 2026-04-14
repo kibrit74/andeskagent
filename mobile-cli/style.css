@@ -508,7 +508,7 @@ body {
     overflow-y: auto;
     z-index: 100;
     margin-top: 12px;
-    animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.3) transparent;
 }
@@ -768,6 +768,200 @@ body.screen-control-disabled .screen-global-blocker {
     transform: scale(1.05);
 }
 
+.endpoint-toggle-btn {
+    font-size: 0.82rem;
+    padding: 7px 12px;
+}
+
+.endpoint-panel {
+    background: linear-gradient(135deg, rgba(12, 18, 31, 0.96), rgba(25, 31, 44, 0.94));
+    border-bottom: 1px solid rgba(88, 166, 255, 0.22);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 42vh;
+    overflow-y: auto;
+    animation: screenSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.endpoint-panel.hidden {
+    display: none;
+}
+
+.endpoint-panel-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.endpoint-panel-title {
+    color: #f0f6fc;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.endpoint-panel-subtitle {
+    color: #8b949e;
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+.endpoint-panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.endpoint-action-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f0f6fc;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.endpoint-action-btn:hover {
+    background: rgba(88, 166, 255, 0.18);
+    border-color: rgba(88, 166, 255, 0.38);
+    transform: translateY(-1px);
+}
+
+.endpoint-action-btn.primary {
+    background: linear-gradient(145deg, rgba(35, 134, 54, 0.5), rgba(35, 134, 54, 0.22));
+    border-color: rgba(63, 185, 80, 0.45);
+    color: #e6ffec;
+}
+
+.endpoint-action-btn.primary:hover {
+    background: linear-gradient(145deg, rgba(35, 134, 54, 0.68), rgba(35, 134, 54, 0.32));
+    border-color: rgba(63, 185, 80, 0.68);
+}
+
+.endpoint-panel-status {
+    color: #c9d1d9;
+    font-size: 0.86rem;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(88, 166, 255, 0.08);
+    border: 1px solid rgba(88, 166, 255, 0.18);
+}
+
+.endpoint-panel-status.error {
+    color: #ffd3d0;
+    background: rgba(248, 81, 73, 0.12);
+    border-color: rgba(248, 81, 73, 0.25);
+}
+
+.endpoint-device-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.endpoint-device-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #f0f6fc;
+    font-family: var(--font-mono);
+    text-align: left;
+    cursor: pointer;
+}
+
+.endpoint-device-card.selected {
+    border-color: rgba(63, 185, 80, 0.48);
+    background: rgba(63, 185, 80, 0.12);
+}
+
+.endpoint-device-name {
+    font-weight: 700;
+    color: #fff;
+}
+
+.endpoint-device-meta,
+.endpoint-empty {
+    color: #9aa7b4;
+    font-size: 0.78rem;
+}
+
+.endpoint-card-action,
+.endpoint-card-hint {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    border-radius: 10px;
+    padding: 9px 10px;
+    font-size: 0.78rem;
+}
+
+.endpoint-card-action {
+    color: #e6ffec;
+    background: linear-gradient(145deg, rgba(35, 134, 54, 0.5), rgba(35, 134, 54, 0.22));
+    border: 1px solid rgba(63, 185, 80, 0.45);
+}
+
+.endpoint-card-hint {
+    color: #9aa7b4;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.endpoint-job-result {
+    max-height: 26vh;
+    overflow-y: auto;
+}
+
+.endpoint-job-summary {
+    margin-top: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.endpoint-job-summary.succeeded {
+    border-color: rgba(63, 185, 80, 0.45);
+    background: rgba(63, 185, 80, 0.12);
+}
+
+.endpoint-job-summary.queued,
+.endpoint-job-summary.leased {
+    border-color: rgba(210, 153, 34, 0.42);
+    background: rgba(210, 153, 34, 0.12);
+}
+
+.endpoint-job-summary.failed,
+.endpoint-job-summary.blocked {
+    border-color: rgba(248, 81, 73, 0.45);
+    background: rgba(248, 81, 73, 0.12);
+}
+
+.endpoint-job-summary-title {
+    color: #fff;
+    font-weight: 700;
+}
+
+.endpoint-job-summary-meta {
+    margin-top: 4px;
+    color: #9aa7b4;
+    font-size: 0.8rem;
+}
+
 @keyframes screenSlideDown {
     from { opacity: 0; max-height: 0; }
     to { opacity: 1; max-height: 45vh; }
@@ -782,6 +976,10 @@ body.screen-control-disabled .screen-global-blocker {
     .screen-preview { max-height: 35vh; }
     .screen-frame { max-height: 35vh; }
     .screen-toggle-btn { padding: 4px 8px; font-size: 1rem; }
+    .endpoint-toggle-btn { font-size: 0.72rem; padding: 5px 8px; }
+    .endpoint-panel { max-height: 55vh; padding: 14px; }
+    .endpoint-panel-header { flex-direction: column; }
+    .endpoint-panel-actions { justify-content: flex-start; }
     .screen-preview.fullscreen .screen-frame {
         height: 100%;
         width: 100%;

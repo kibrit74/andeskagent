@@ -31,6 +31,7 @@ const slashCommands = [
     { cmd: '/usage', icon: '💸', desc: 'Kullanım bilgisi' },
     { cmd: '/rewind', icon: '⏪', desc: 'Son kayıt geri al' },
     { cmd: '/audit', icon: '📄', desc: 'Oturum audit raporu' },
+    { cmd: '/cihazlar', icon: 'PC', desc: 'Endpoint agent cihazlarini listeler' },
     { cmd: '/agent', icon: '🤖', desc: 'Agent profili seç/listele' }
 ];
 
@@ -47,12 +48,13 @@ function renderSlashMenu(filter = '') {
 
     const wrapperRect = inputWrapper.getBoundingClientRect();
     const left = Math.max(8, wrapperRect.left + 20);
-    const top = wrapperRect.bottom + 12;
-    const availableHeight = Math.max(160, window.innerHeight - top - 16);
+    const bottom = window.innerHeight - wrapperRect.top + 12;
+    const availableHeight = Math.max(160, wrapperRect.top - 16);
     const width = Math.min(wrapperRect.width - 40, 360);
     slashMenu.style.position = 'fixed';
     slashMenu.style.left = `${left}px`;
-    slashMenu.style.top = `${top}px`;
+    slashMenu.style.top = 'auto';
+    slashMenu.style.bottom = `${bottom}px`;
     slashMenu.style.width = `${width}px`;
     slashMenu.style.maxHeight = `${Math.min(420, availableHeight)}px`;
 
@@ -73,8 +75,8 @@ function renderSlashMenu(filter = '') {
             </div>
         `;
         div.addEventListener('click', () => {
-            const rawCmd = item.cmd.replace('/', '');
-            cliInput.value = rawCmd;
+            const rawCmd = item.cmd;
+            cliInput.value = rawCmd + ' ';
             slashMenu.classList.remove('active');
             slashActive = false;
             cliInput.focus();
@@ -374,6 +376,177 @@ function renderResult(result) {
     `;
 }
 
+function getBearerToken() {
+    let bearerToken = localStorage.getItem('bearer_token');
+    if (!bearerToken) {
+        const urlToken = new URLSearchParams(window.location.search).get('token');
+        if (urlToken) {
+            bearerToken = urlToken.trim();
+            localStorage.setItem('bearer_token', bearerToken);
+        }
+    }
+    return bearerToken;
+}
+
+function authHeaders() {
+    const bearerToken = getBearerToken();
+    return bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {};
+}
+
+let endpointDevices = [];
+let selectedEndpointDeviceId = '';
+let lastEndpointJobId = null;
+
+function setEndpointStatus(message, isError = false) {
+    const status = document.getElementById('endpoint-panel-status');
+    if (!status) return;
+    status.textContent = message;
+    status.classList.toggle('error', isError);
+}
+
+function renderEndpointDevices(devices) {
+    const list = document.getElementById('endpoint-device-list');
+    if (!list) return;
+
+    if (!devices.length) {
+        list.innerHTML = '<div class="endpoint-empty">Kayitli endpoint cihazi yok.</div>';
+        return;
+    }
+
+    if (!selectedEndpointDeviceId || !devices.some((device) => device.id === selectedEndpointDeviceId)) {
+        selectedEndpointDeviceId = devices[0].id;
+    }
+
+    list.innerHTML = devices.map((device) => {
+        const selected = device.id === selectedEndpointDeviceId ? ' selected' : '';
+        const actionHtml = selected
+            ? '<span class="endpoint-card-action" data-endpoint-action="system-status">Sistem kontrolu calistir</span>'
+            : '<span class="endpoint-card-hint">Secmek icin tikla</span>';
+        return `
+            <button class="endpoint-device-card${selected}" data-device-id="${escapeHtml(device.id)}">
+                <span class="endpoint-device-name">${escapeHtml(device.hostname || device.id)}</span>
+                <span class="endpoint-device-meta">Status: ${escapeHtml(device.status || '-')}</span>
+                <span class="endpoint-device-meta">RustDesk: ${escapeHtml(device.rustdesk_id || '-')}</span>
+                <span class="endpoint-device-meta">Son gorulme: ${escapeHtml(device.last_seen_at || '-')}</span>
+                ${actionHtml}
+            </button>
+        `;
+    }).join('');
+
+    list.querySelectorAll('.endpoint-device-card').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            selectedEndpointDeviceId = button.getAttribute('data-device-id') || '';
+            renderEndpointDevices(endpointDevices);
+            setEndpointStatus(`Secili cihaz: ${selectedEndpointDeviceId}`);
+            if (event.target && event.target.getAttribute('data-endpoint-action') === 'system-status') {
+                sendEndpointSystemStatusJob();
+            }
+        });
+    });
+}
+
+async function refreshEndpointDevices() {
+    try {
+        setEndpointStatus('Cihazlar yukleniyor...');
+        const response = await fetch('/endpoint-agents/devices', {
+            headers: authHeaders(),
+        });
+        if (response.status === 401) {
+            setEndpointStatus('Yetki hatasi: /mobile-cli/?token=... ile acin.', true);
+            return;
+        }
+        const payload = await response.json();
+        endpointDevices = Array.isArray(payload.items) ? payload.items : [];
+        renderEndpointDevices(endpointDevices);
+        setEndpointStatus(`${endpointDevices.length} cihaz listelendi.`);
+        await refreshEndpointJobResult();
+    } catch (error) {
+        setEndpointStatus(`Cihaz listesi alinamadi: ${error.message}`, true);
+    }
+}
+
+async function refreshEndpointJobResult() {
+    if (!selectedEndpointDeviceId || !lastEndpointJobId) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/endpoint-agents/devices/${encodeURIComponent(selectedEndpointDeviceId)}/jobs`, {
+            headers: authHeaders(),
+        });
+        if (!response.ok) {
+            return;
+        }
+        const payload = await response.json();
+        const jobs = Array.isArray(payload.items) ? payload.items : [];
+        const job = jobs.find((item) => Number(item.id) === Number(lastEndpointJobId));
+        const result = document.getElementById('endpoint-job-result');
+        if (!job || !result) return;
+
+        result.innerHTML = `
+            <div class="endpoint-job-summary ${escapeHtml(job.status || 'unknown')}">
+                <div class="endpoint-job-summary-title">Job ${escapeHtml(job.id)}: ${escapeHtml(job.status || '-')}</div>
+                <div class="endpoint-job-summary-meta">Action: ${escapeHtml(job.action || '-')}</div>
+            </div>
+            <div class="result-section">
+                <div class="result-title-container">
+                    <div class="result-title">Sonuc Detayi</div>
+                </div>
+                ${renderStructuredValue(job)}
+            </div>
+        `;
+        setEndpointStatus(`Job ${job.id}: ${job.status}`);
+    } catch (error) {
+        setEndpointStatus(`Job sonucu alinamadi: ${error.message}`, true);
+    }
+}
+
+async function sendEndpointSystemStatusJob() {
+    if (!selectedEndpointDeviceId) {
+        setEndpointStatus('Once bir cihaz secin.', true);
+        return;
+    }
+
+    try {
+        setEndpointStatus('Sistem durumu job kuyruga ekleniyor...');
+        const response = await fetch(`/endpoint-agents/devices/${encodeURIComponent(selectedEndpointDeviceId)}/jobs`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeaders(),
+            },
+            body: JSON.stringify({ action: 'get_system_status', payload: {} }),
+        });
+        if (response.status === 401) {
+            setEndpointStatus('Yetki hatasi: /mobile-cli/?token=... ile acin.', true);
+            return;
+        }
+        const payload = await response.json();
+        lastEndpointJobId = payload.job ? payload.job.id : null;
+        setEndpointStatus(`Job ${lastEndpointJobId} kuyruga eklendi. Agent calisinca sonuc gelecek.`);
+        await refreshEndpointJobResult();
+        setTimeout(refreshEndpointJobResult, 3000);
+        setTimeout(refreshEndpointJobResult, 8000);
+        setTimeout(refreshEndpointJobResult, 13000);
+        setTimeout(refreshEndpointJobResult, 20000);
+    } catch (error) {
+        setEndpointStatus(`Job eklenemedi: ${error.message}`, true);
+    }
+}
+
+function openEndpointPanel() {
+    const panel = document.getElementById('endpoint-panel');
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    refreshEndpointDevices();
+}
+
+function closeEndpointPanel() {
+    const panel = document.getElementById('endpoint-panel');
+    if (!panel) return;
+    panel.classList.add('hidden');
+}
+
 // Global copy button handler
 document.addEventListener('click', (e) => {
     if (e.target && e.target.classList.contains('dom-copy-btn')) {
@@ -560,8 +733,8 @@ cliInput.addEventListener('keydown', async (event) => {
 
         if (event.key === 'Enter' && filtered.length > 0) {
             event.preventDefault();
-            const selectedStr = filtered[slashSelectedIndex].cmd.replace('/', '');
-            cliInput.value = selectedStr;
+            const selectedStr = filtered[slashSelectedIndex].cmd;
+            cliInput.value = selectedStr + ' ';
             slashActive = false;
             slashMenu.classList.remove('active');
             return;
@@ -610,14 +783,14 @@ cliInput.addEventListener('keydown', async (event) => {
         cliInput.disabled = true;
         autoResizeInput();
 
-        if (lowerCmd === 'cls' || lowerCmd === 'clear' || lowerCmd === 'temizle') {
+        if (lowerCmd === 'cls' || lowerCmd === 'clear' || lowerCmd === 'temizle' || lowerCmd === '/cls' || lowerCmd === '/clear' || lowerCmd === '/temizle') {
             terminalBody.innerHTML = '';
             cliInput.disabled = false;
             cliInput.focus();
             return;
         }
 
-        if (lowerCmd === 'iptal') {
+        if (lowerCmd === 'iptal' || lowerCmd === '/iptal') {
             createMessageElement(`
                 <div style="display: flex; gap: 8px; width: 100%;">
                     <span style="color: var(--accent-blue); flex: 0 0 auto;">&gt;</span>
@@ -643,7 +816,7 @@ cliInput.addEventListener('keydown', async (event) => {
             return;
         }
 
-        if (lowerCmd === 'yardim' || lowerCmd === 'help') {
+        if (lowerCmd === 'yardim' || lowerCmd === 'help' || lowerCmd === '/yardim' || lowerCmd === '/help') {
             createMessageElement(`
                 <div style="display: flex; gap: 8px; width: 100%;">
                     <span style="color: var(--accent-blue); flex: 0 0 auto;">&gt;</span>
@@ -661,6 +834,13 @@ cliInput.addEventListener('keydown', async (event) => {
         }
 
         // Yerel komut yakalamaları
+        if (lowerCmd === 'cihazlar' || lowerCmd === '/cihazlar' || lowerCmd === 'devices' || lowerCmd === '/devices') {
+            openEndpointPanel();
+            cliInput.disabled = false;
+            cliInput.focus();
+            return;
+        }
+
         if (['time', 'saat'].includes(lowerCmd)) {
             const now = new Date().toLocaleTimeString('tr-TR');
             terminalBody.innerHTML += `<div class="message system" style="margin-top: 8px;"><span style="color: var(--accent-green);">✓</span> 🕒 Yerel Saat: ${now}</div>`;
@@ -963,6 +1143,26 @@ function toggleScreenShare() {
 const screenToggleBtn = document.getElementById('screen-toggle');
 if (screenToggleBtn) {
     screenToggleBtn.addEventListener('click', toggleScreenShare);
+}
+
+const endpointPanelToggleBtn = document.getElementById('endpoint-panel-toggle');
+if (endpointPanelToggleBtn) {
+    endpointPanelToggleBtn.addEventListener('click', openEndpointPanel);
+}
+
+const endpointPanelCloseBtn = document.getElementById('endpoint-panel-close');
+if (endpointPanelCloseBtn) {
+    endpointPanelCloseBtn.addEventListener('click', closeEndpointPanel);
+}
+
+const endpointRefreshBtn = document.getElementById('endpoint-refresh');
+if (endpointRefreshBtn) {
+    endpointRefreshBtn.addEventListener('click', refreshEndpointDevices);
+}
+
+const endpointRunStatusBtn = document.getElementById('endpoint-run-status');
+if (endpointRunStatusBtn) {
+    endpointRunStatusBtn.addEventListener('click', sendEndpointSystemStatusJob);
 }
 
 // Kapatma butonu

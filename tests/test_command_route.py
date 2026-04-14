@@ -1,7 +1,25 @@
 from __future__ import annotations
 
+import pytest
+from fastapi.testclient import TestClient
+
+from adapters.openclaude_adapter import OpenClaudeResponse
 from core.command_parser import ParsedCommand
-from server.routes.command import CommandRequest, _INTERACTIVE_SESSION, execute_command
+from core.config import AppSettings
+from server.main import app
+from server.routes.command import CommandRequest, _INTERACTIVE_SESSION, _clear_interactive_session, execute_command
+
+
+@pytest.fixture(autouse=True)
+def default_route_settings(monkeypatch) -> None:
+    _clear_interactive_session()
+    monkeypatch.setattr(
+        "server.routes.command.load_settings",
+        lambda: AppSettings(bearer_token="432323", ai_provider="gemini"),
+    )
+    monkeypatch.setattr("server.routes.command._restore_browser_session_from_worker", lambda: None)
+    yield
+    _clear_interactive_session()
 
 
 def test_execute_command_closes_active_session() -> None:
@@ -106,3 +124,42 @@ def test_execute_command_create_ticket_uses_native_ticket_store(monkeypatch) -> 
     assert response.result is not None
     assert response.result["ticket_id"] == 42
     assert "olusturuldu" in response.summary
+
+
+def test_command_ui_uses_openclaude_provider(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "server.routes.command.load_settings",
+        lambda: AppSettings(
+            bearer_token="432323",
+            ai_provider="openclaude",
+            openrouter_api_key="sk-or-test",
+            openrouter_model="openai/gpt-4o-mini",
+        ),
+    )
+    monkeypatch.setattr(
+        "server.routes.command.run_openclaude_prompt",
+        lambda prompt, settings, working_directory: OpenClaudeResponse(
+            result="OpenClaude cevabi",
+            session_id="session-openclaude",
+            duration_ms=1234.0,
+            duration_api_ms=987.0,
+            num_turns=2,
+            total_cost_usd=0.0123,
+            usage={"input_tokens": 11, "output_tokens": 22},
+            model_usage={"openai/gpt-4o-mini": {"output_tokens": 22}},
+            raw={},
+        ),
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/command-ui",
+        headers={"Authorization": "Bearer 432323"},
+        json={"text": "sunucu loglarini yorumla", "approved": False},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["action"] == "openclaude_chat"
+    assert payload["summary"] == "OpenClaude yaniti hazir."
+    assert payload["result"]["answer"] == "OpenClaude cevabi"

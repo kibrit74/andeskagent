@@ -93,8 +93,8 @@ async def screen_stream(websocket: WebSocket) -> None:
     try:
         while True:
             frame_bytes, screen_w, screen_h, scale, cursor_w, cursor_h, virtual_x, virtual_y, virtual_w, virtual_h = await _capture_frame(
-                quality=40,
-                scale=0.5,
+                quality=80,
+                scale=1.0,
             )
             if frame_bytes:
                 frame_b64 = base64.b64encode(frame_bytes).decode("ascii")

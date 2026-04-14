@@ -44,6 +44,11 @@ class AppSettings:
     ai_provider: str = "gemini"
     openrouter_api_key: str = ""
     openrouter_model: str = "openai/gpt-4o-mini"
+    openclaude_command: str = "openclaude"
+    openclaude_api_key: str = ""
+    openclaude_base_url: str = "https://openrouter.ai/api/v1"
+    openclaude_model: str = ""
+    openclaude_timeout_seconds: int = 180
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -99,6 +104,11 @@ def load_settings(config_path: Path | None = None) -> AppSettings:
     env_gemini_model = os.environ.get("GEMINI_MODEL", "")
     env_openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
     env_openrouter_model = os.environ.get("OPENROUTER_MODEL", "")
+    env_openclaude_command = os.environ.get("OPENCLAUDE_COMMAND", "")
+    env_openclaude_key = os.environ.get("OPENCLAUDE_OPENAI_API_KEY", "")
+    env_openclaude_base_url = os.environ.get("OPENCLAUDE_OPENAI_BASE_URL", "")
+    env_openclaude_model = os.environ.get("OPENCLAUDE_OPENAI_MODEL", "")
+    env_openclaude_timeout = os.environ.get("OPENCLAUDE_TIMEOUT_SECONDS", "")
 
     settings = AppSettings(
         api_host=raw.get("api_host", AppSettings.api_host),
@@ -127,6 +137,11 @@ def load_settings(config_path: Path | None = None) -> AppSettings:
         ai_provider=env_ai_provider or raw.get("ai_provider", "gemini"),
         openrouter_api_key=env_openrouter_key or raw.get("openrouter_api_key", ""),
         openrouter_model=env_openrouter_model or raw.get("openrouter_model", "openai/gpt-4o-mini"),
+        openclaude_command=env_openclaude_command or raw.get("openclaude_command", "openclaude"),
+        openclaude_api_key=env_openclaude_key or raw.get("openclaude_api_key", ""),
+        openclaude_base_url=env_openclaude_base_url or raw.get("openclaude_base_url", "https://openrouter.ai/api/v1"),
+        openclaude_model=env_openclaude_model or raw.get("openclaude_model", ""),
+        openclaude_timeout_seconds=int(env_openclaude_timeout or raw.get("openclaude_timeout_seconds", 180)),
     )
     if env_openrouter_key and not env_ai_provider:
         settings.ai_provider = "openrouter"

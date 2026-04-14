@@ -14,11 +14,17 @@ dependencies = [
   "rich>=13.9,<14.0",
   "requests>=2.32,<3.0",
   "psutil>=6.1,<7.0",
-  "email-validator>=2.2,<3.0"
+  "email-validator>=2.2,<3.0",
+  "mcp[cli]>=1.0"
 ]
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["server*", "cli*", "adapters*", "core*"]
+include = ["server*", "cli*", "adapters*", "core*", "endpoint_agent*"]
+
+[tool.pyrefly]
+python-interpreter-path = ".venv/Scripts/python.exe"
+site-package-path = [".venv/Lib/site-packages"]
+ignore-missing-imports = ["mcp.*"]

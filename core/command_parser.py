@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus
 
 from adapters.gemini_adapter import parse_command_with_gemini
 from adapters.openrouter_adapter import parse_command_with_openrouter
@@ -50,6 +51,7 @@ ALLOWED_ACTIONS = (
     "run_script",
     "system_status",
     "list_scripts",
+    "openclaude_chat",
     "unknown",
 )
 
@@ -145,6 +147,64 @@ def _looks_like_excel_edit_workflow(text: str) -> bool:
     return has_excel_target and has_edit_intent
 
 
+def _looks_like_web_search(text: str) -> bool:
+    normalized = _normalize(_normalize_command_text(text))
+    has_web_target = any(token in normalized for token in ("google", "duckduckgo", "duck duck go", "ducducgo", "webde", "internette", "internet uzerinde"))
+    has_search_intent = any(token in normalized for token in (" ara", " arat", " arama", " search"))
+    return has_web_target and has_search_intent
+
+
+def _extract_web_search_query(text: str) -> str:
+    normalized = _normalize(_normalize_command_text(text))
+    cleanup_patterns = (
+        r"\btarayicidan\b",
+        r"\btarayicida\b",
+        r"\btarayici\b",
+        r"\bbrowserdan\b",
+        r"\bbrowserda\b",
+        r"\bbrowser\b",
+        r"\bgoogle'da\b",
+        r"\bgoogle'dan\b",
+        r"\bgoogleda\b",
+        r"\bgoogledan\b",
+        r"\bgooglede\b",
+        r"\bgoogleden\b",
+        r"\bgoogle da\b",
+        r"\bgoogle dan\b",
+        r"\bgoogle de\b",
+        r"\bgoogle den\b",
+        r"\bgoogle\b",
+        r"\bduckduckgo'da\b",
+        r"\bduckduckgo'dan\b",
+        r"\bduckduckgoda\b",
+        r"\bduckduckgodan\b",
+        r"\bduckduckgo da\b",
+        r"\bduckduckgo dan\b",
+        r"\bduckduckgo\b",
+        r"\bduck duck go\b",
+        r"\bducducgo\b",
+        r"\bwebde\b",
+        r"\binternette\b",
+        r"\binternet uzerinde\b",
+        r"\bac\b",
+        r"\bara\b",
+        r"\barat\b",
+        r"\barama yap\b",
+        r"\bve\b",
+    )
+    for pattern in cleanup_patterns:
+        normalized = re.sub(pattern, " ", normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r"\s+", " ", normalized).strip(" .:-")
+    return normalized
+
+
+def _build_web_search_url(query: str) -> str:
+    cleaned_query = query.strip()
+    if not cleaned_query:
+        return "https://duckduckgo.com/"
+    return f"https://duckduckgo.com/?q={quote_plus(cleaned_query)}"
+
+
 def _classify_agent_browser_intent(text: str) -> str | None:
     normalized = _normalize(_normalize_command_text(text))
 
@@ -161,6 +221,9 @@ def _classify_agent_browser_intent(text: str) -> str | None:
         return "click_pdf_link"
 
     if re.search(r"\bhttps?://", text, flags=re.IGNORECASE):
+        return "navigate_agent_browser"
+
+    if _looks_like_web_search(text):
         return "navigate_agent_browser"
 
     if any(token in normalized for token in ("tarayici ac", "tarayiciyi ac", "browser ac", "browseri ac")):
@@ -186,6 +249,11 @@ def _classify_agent_browser_intent(text: str) -> str | None:
         "calendari ac",
         "takvimde",
         "calendarda",
+        "google ac",
+        "google'a git",
+        "google a git",
+        "google'a gir",
+        "google a gir",
     )
     if any(phrase in normalized for phrase in site_navigation_phrases):
         return "navigate_agent_browser"
@@ -429,6 +497,8 @@ Parametre kurallari:
 - verify_ui_state icin params icinde opsiyonel expected_text kullan.
 - create_ticket icin params icinde title ve opsiyonel description kullan.
 - run_script icin params icinde script_name veya script_names kullan. (BAT/CMD kullanma, sadece PS1)
+- Eger sistem alici e-posta adresi istediyse ve kullanici yalnizca e-posta yaziyorsa LLM kullanma; pending akisi tamamla.
+- Kullanici e-posta ile birlikte yeni bir istek yazarsa (ornegin "ali@example.com'a gonder ve konu ekle"), bu durumda LLM ile yeni komutu yorumla.
 - system_status ve list_scripts ve list_windows ve read_screen ve take_screenshot icin params bos olabilir.
 - extension alaninda nokta kullanma. Ornek: xlsx
 - location veya destination_location belirtilmediyse desktop kullan.
@@ -777,10 +847,21 @@ def _fallback_parse(text: str) -> ParsedCommand:
     if agent_browser_intent == "navigate_agent_browser":
         target = None
         normalized_text = _normalize(text)
+        search_query = _extract_web_search_query(text) if _looks_like_web_search(text) else ""
+        if search_query:
+            return ParsedCommand(
+                action="navigate_agent_browser",
+                params={"url": _build_web_search_url(search_query)},
+                confidence=0.9,
+                knowledge_hint=knowledge_hint,
+                workflow_profile=workflow_profile,
+            )
         if "gmail" in normalized_text:
             target = "gmail"
         elif any(token in normalized_text for token in ("takvim", "calendar", "calender", "calendari", "calendarda")):
             target = "calendar"
+        elif "google" in normalized_text:
+            target = "google"
         return ParsedCommand(
             action="navigate_agent_browser",
             params={
@@ -866,6 +947,15 @@ def _fallback_parse(text: str) -> ParsedCommand:
             )
 
     if agent_browser_intent in {"navigate_agent_browser", "open_agent_browser", "reuse_agent_browser_session"}:
+        if agent_browser_intent == "navigate_agent_browser" and _looks_like_web_search(text):
+            search_query = _extract_web_search_query(text)
+            return ParsedCommand(
+                action=agent_browser_intent,
+                params={"url": _build_web_search_url(search_query)},
+                confidence=0.9,
+                knowledge_hint=knowledge_hint,
+                workflow_profile=workflow_profile,
+            )
         return ParsedCommand(
             action=agent_browser_intent,
             params={},
@@ -1137,6 +1227,7 @@ def parse_command(text: str, settings: AppSettings | None = None) -> ParsedComma
     elif agent_browser_intent in {"navigate_agent_browser", "open_agent_browser", "reuse_agent_browser_session"} and action in {
         "search_file",
         "open_file",
+        "run_script",
         "unknown",
     }:
         action = agent_browser_intent
